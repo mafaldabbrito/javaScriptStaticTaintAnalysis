@@ -12,10 +12,10 @@ if __name__ == "__main__":
 
     # Add valid sources/sanitizers
     mlabel.add_source("SQL Injection", "get_user_input")     
-    mlabel.add_sanitizer("SQL Injection", "escape_sql")      
+    mlabel.add_sanitizer("SQL Injection", "get_user_input","escape_sql")      
 
     mlabel.add_source("XSS", "get_url_param")                
-    mlabel.add_sanitizer("XSS", "sanitize_html")              
+    mlabel.add_sanitizer("XSS", "get_user_input", "sanitize_html")              
 
     # Invalid (ignored silently or could raise an error, depending on design)
     mlabel.add_source("SQL Injection", "get_url_param")       # not a valid source for SQL
@@ -25,4 +25,6 @@ if __name__ == "__main__":
     mlabel2.add_source("SQL Injection", "get_user_input")
 
     combined = mlabel.combine(mlabel2)
+
+
 

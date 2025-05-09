@@ -25,14 +25,14 @@ class MultiLabel:
         if pattern and pattern.is_source(source_name):
             self._labels[pattern_name].add_source(source_name)
 
-    def add_sanitizer(self, pattern_name, sanitizer_name):
+    def add_sanitizer(self, pattern_name, source_name, sanitizer_name):
         """
         Add a sanitizer to the label associated with a given pattern,
         if it's a valid sanitizer in that pattern.
         """
         pattern = self._patterns.get(pattern_name)
         if pattern and pattern.is_sanitizer(sanitizer_name):
-            self._labels[pattern_name].add_sanitizer(sanitizer_name)
+            self._labels[pattern_name].add_sanitizer(source_name, sanitizer_name)
 
     # Selectors
     def get_label(self, pattern_name):
@@ -60,3 +60,4 @@ class MultiLabel:
                 new_multilabel._labels[pattern_name] = combined_label
 
         return new_multilabel
+
