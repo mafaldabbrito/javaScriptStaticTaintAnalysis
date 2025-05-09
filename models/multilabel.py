@@ -61,3 +61,8 @@ class MultiLabel:
 
         return new_multilabel
 
+    def __repr__(self):
+        """
+        String representation of the MultiLabel.
+        """
+        return f"MultiLabel ({self._labels})"
