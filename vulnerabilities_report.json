@@ -1,0 +1,23 @@
+[
+  {
+    "vulnerability": "DOM XSS",
+    "source": [
+      "document.URL",
+      1
+    ],
+    "sink": [
+      "document.write",
+      4
+    ],
+    "implicit_flows": "no",
+    "unsanitized_flows": "no",
+    "sanitized_flows": [
+      [
+        [
+          "DOMPurify.sanitize",
+          3
+        ]
+      ]
+    ]
+  }
+]

@@ -1,30 +1,61 @@
 from models.pattern import Pattern
 from models.multilabel import MultiLabel
+from models.policy import Policy
+from models.multilabelling import MultiLabelling
+from models.vulnerabilities import Vulnerabilities
 
 
 if __name__ == "__main__":
-    # Define patterns
-    sql_pattern = Pattern("SQL Injection", ["get_user_input"], ["escape_sql"], ["execute_query"])
-    xss_pattern = Pattern("XSS", ["get_url_param"], ["sanitize_html"], ["render_page"])
+       # Define patterns
+    # dom_xss = Pattern(
+    #     name="DOM XSS",
+    #     sources=["document.URL"],
+    #     sanitizers=["DOMPurify.sanitize"],
+    #     sinks=["document.write"]
+    # )
 
-    # Create MultiLabel
-    mlabel = MultiLabel([sql_pattern, xss_pattern])
+    # patterns = [dom_xss]
+    # policy = Policy(patterns)
 
-    # Add valid sources/sanitizers
-    mlabel.add_source("SQL Injection", "get_user_input")     
-    mlabel.add_sanitizer("SQL Injection", "get_user_input","escape_sql")      
+    # # Simulate a program
+    # multilabel = MultiLabel(patterns)
+    # multilabel.add_source("DOM XSS", "document.URL")
+    # multilabel.add_sanitizer("DOM XSS",  "document.URL", "DOMPurify.sanitize")  # <- Comment this line to test unsanitized
 
-    mlabel.add_source("XSS", "get_url_param")                
-    mlabel.add_sanitizer("XSS", "get_user_input", "sanitize_html")              
+    # # Track variable flows
+    # env = MultiLabelling()
+    # env.set_multilabel("output", multilabel)
 
-    # Invalid (ignored silently or could raise an error, depending on design)
-    mlabel.add_source("SQL Injection", "get_url_param")       # not a valid source for SQL
+    # # Check for illegal flow
+    # illegal_flows = policy.detect_illegal_flows("document.write", env.get_multilabel("output"))
 
-    # Combine with another MultiLabel
-    mlabel2 = MultiLabel([sql_pattern, xss_pattern])
-    mlabel2.add_source("SQL Injection", "get_user_input")
+    # # Report
+    # vulnerabilities = Vulnerabilities()
+    # source_positions = {
+    #     "document.URL": 1,
+    #     "DOMPurify.sanitize": 3
+    # }
+    # sink_position = 4
 
-    combined = mlabel.combine(mlabel2)
+    # vulnerabilities.add_illegal_flow("document.write", illegal_flows, source_positions, sink_position)
 
+    # print("=== Detected Vulnerabilities ===")
+    # for v in vulnerabilities.get_all():
+    #     print(v)
 
+    # vulnerabilities.export_json("vulnerabilities_report.json")
+    # print("\nReport saved to vulnerabilities_report.json")
 
+    # Test AST Parser
+    from utils.ast_parser import Parser
+    from utils.ast_traversal import TraversalVisitor
+    parser=Parser("test.js")
+    ast_tree = parser.parse_js_code()
+    # if ast_tree:
+    #     print("AST Tree:")
+    #     print(ast_tree)
+    # else:
+    #     print("Failed to parse the JavaScript code.")
+    # Test AST Traversal
+    traversal_visitor = TraversalVisitor()
+    traversal_visitor.visit(ast_tree)
