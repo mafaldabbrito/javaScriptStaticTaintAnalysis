@@ -1,4 +1,5 @@
 import json
+import os
 
 
 class Vulnerabilities:
@@ -63,5 +64,9 @@ class Vulnerabilities:
         return '\n\n'.join(format_vuln(v) for v in self._vulns)
 
     def export_json(self, filepath):
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(self._vulns, f, indent=4)
+        output_dir = os.path.join(os.path.dirname(filepath), "output")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        output_path = os.path.join(output_dir, os.path.basename(filepath))
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(self._vulns, f, indent=4)

@@ -1,0 +1,16 @@
+[
+    {
+        "vulnerability": "A",
+        "sources": [
+            "m"
+        ],
+        "sanitizers": [
+            "c",
+            "z"
+        ],
+        "sinks": [
+            "a"
+        ],
+        "implicit": "no"
+    }
+]

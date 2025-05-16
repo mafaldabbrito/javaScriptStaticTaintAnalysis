@@ -104,6 +104,26 @@ class TraversalVisitor(NodeVisitor):
             self.initialized_variables.add(node.left.name)
             print(f"Initialized variable: {node.left.name}")
             if hasattr(node.right, 'type') and node.right.type == "CallExpression":
+                current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+
+                for pname in self.policy.get_patterns_with_source(node.right.callee.name):
+                    print(f"Source detected: {node.right.callee.name} in pattern {pname}")
+                    current_label.add_source(pname, node.right.callee.name, node.loc.start.line)
+                    
+                # Combine the labels from the right side with the left side and set it
+                current_label.combine(self.labelling.get_multilabel(node.right.callee.name))
+                self.labelling.set_multilabel(node.left.name, current_label)
+
+                for pname in self.policy.get_patterns_with_sink(node.left.name):
+                    print(f"Sink detected: {node.left.name} in pattern {pname}")
+                    multi_label = self.labelling.get_multilabel(node.left.name)
+                    if multi_label:
+                        illegal_flows = self.policy.detect_illegal_flows(node.left.name, multi_label)
+                        print(illegal_flows)
+                        if illegal_flows:
+                            self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
+                            print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
+
                 self.visit(node.right)
             elif hasattr(node.right, 'type') and node.right.type == "Identifier":
 
@@ -140,33 +160,40 @@ class TraversalVisitor(NodeVisitor):
     def visit_CallExpression(self, node):
         print(f"=== Function call: {node.callee.name} ===")
         print(f"At line: {node.loc.start.line}")
+        
+        function_label = self.labelling.get_multilabel(node.callee.name) or MultiLabel(list(self.policy._patterns.values()))
+
         if hasattr(node, 'arguments'):
+
             for arg in node.arguments:
-                if hasattr(arg, 'type') and arg.type == "Identifier":
+                if hasattr(node.right, 'type') and node.right.type == "CallExpression":
+                    self.visit(node.right)
+
+                elif hasattr(arg, 'type') and arg.type == "Identifier":
+                   
+
                     if arg.name not in self.initialized_variables:
+                        
                         for pname in self.policy.get_patterns_without_source(arg.name):
                             print(f"Source added: {arg.name} in pattern {pname}")
-                            label = self.labelling.get_multilabel(node.callee.name) or MultiLabel(list(self.policy._patterns.values()))
-                            label.add_source(pname, arg.name, node.loc.start.line)
-                            self.labelling.set_multilabel(node.callee.name, label)
+                            function_label.add_source(pname, arg.name, node.loc.start.line)
+                            
 
                     for pname in self.policy.get_patterns_with_source(arg.name):
                         print(f"Source detected: {arg.name} in pattern {pname}")
-                        label = self.labelling.get_multilabel(node.callee.name) or MultiLabel(list(self.policy._patterns.values()))
-                        label.add_source(pname, arg.name, node.loc.start.line)
-                        self.labelling.set_multilabel(node.callee.name, label)
+                        function_label.add_source(pname, arg.name, node.loc.start.line)
 
-                    print(f"Assigned variable: {arg.name}")
+                    # Combine the labels from the right side with the left side but don't set it because it's a function call
+                    function_label.combine(self.labelling.get_multilabel(arg.name))
 
-                for pname in self.policy.get_patterns_with_sink(node.callee.name):
-                    print(f"Sink detected: {node.callee.name} in pattern {pname}")
-                    multi_label = self.labelling.get_multilabel(node.callee.name)
-                    if multi_label:
-                        illegal_flows = self.policy.detect_illegal_flows(node.callee.name, multi_label)
+        for pname in self.policy.get_patterns_with_sink(node.callee.name):
+                    print(f"Sink function detected: {node.callee.name} in pattern {pname}")
+                    if function_label:
+                        illegal_flows = self.policy.detect_illegal_flows(node.callee.name, function_label)
                         print(illegal_flows)
                         if illegal_flows:
                             self.vulnerabilities.add_illegal_flow(node.callee.name, illegal_flows, node.loc.start.line)
-                            print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")
+                            print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")        
         print(f"=== End of Function call ===")
 
 
