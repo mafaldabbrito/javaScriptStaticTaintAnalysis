@@ -53,7 +53,7 @@ class TraversalVisitor(NodeVisitor):
         if node.kind == "var":
             for declaration in node.declarations:
                 if hasattr(declaration, 'id'):
-                    self.initialized_variables.add((declaration.id.name, node.loc.start.line))
+                    self.initialized_variables.add(declaration.id.name)
                     print(f"Initialized variable: {declaration.id.name}")
                     if hasattr(declaration, 'init'):
                         if hasattr(declaration.init, 'type') and declaration.init.type == "FunctionExpression":
@@ -101,29 +101,30 @@ class TraversalVisitor(NodeVisitor):
         print(f"=== Assignment: {node.left.name} ===")
         print(f"At line: {node.loc.start.line}")
         if hasattr(node.left, 'name'):
-            self.initialized_variables.add((node.left.name, node.loc.start.line))
-            print(f"Assigned variable: {node.left.name}")
+            self.initialized_variables.add(node.left.name)
+            print(f"Initialized variable: {node.left.name}")
             if hasattr(node.right, 'type') and node.right.type == "CallExpression":
                 self.visit(node.right)
             elif hasattr(node.right, 'type') and node.right.type == "Identifier":
 
+                current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+                print(f"Assigned variable: {node.right.name}")
+
+
                 if node.right.name not in self.initialized_variables:
                     for pname in self.policy.get_patterns_without_source(node.right.name):
                         print(f"Source added: {node.right.name} in pattern {pname}")
-                        label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
-                        label.add_source(pname, node.right.name, node.loc.start.line)
-                        label.combine(self.labelling.get_multilabel(node.right.name))
-                        self.labelling.set_multilabel(node.left.name, label)
+                        current_label.add_source(pname, node.right.name, node.loc.start.line)
+                       
 
-               
+                # Check if the right side is a source
                 for pname in self.policy.get_patterns_with_source(node.right.name):
                     print(f"Source detected: {node.right.name} in pattern {pname}")
-                    label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
-                    label.add_source(pname, node.right.name, node.loc.start.line)
-                    label.combine(self.labelling.get_multilabel(node.right.name))
-                    self.labelling.set_multilabel(node.left.name, label)
-
-                print(f"Assigned variable: {node.right.name}")
+                    current_label.add_source(pname, node.right.name, node.loc.start.line)
+                    
+                # Combine the labels from the right side with the left side and set it
+                current_label.combine(self.labelling.get_multilabel(node.right.name))
+                self.labelling.set_multilabel(node.left.name, current_label)
 
                 for pname in self.policy.get_patterns_with_sink(node.left.name):
                     print(f"Sink detected: {node.left.name} in pattern {pname}")
@@ -135,6 +136,39 @@ class TraversalVisitor(NodeVisitor):
                             self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
                             print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
         print(f"=== End of Assignment ===")     
+
+    def visit_CallExpression(self, node):
+        print(f"=== Function call: {node.callee.name} ===")
+        print(f"At line: {node.loc.start.line}")
+        if hasattr(node, 'arguments'):
+            for arg in node.arguments:
+                if hasattr(arg, 'type') and arg.type == "Identifier":
+                    if arg.name not in self.initialized_variables:
+                        for pname in self.policy.get_patterns_without_source(arg.name):
+                            print(f"Source added: {arg.name} in pattern {pname}")
+                            label = self.labelling.get_multilabel(node.callee.name) or MultiLabel(list(self.policy._patterns.values()))
+                            label.add_source(pname, arg.name, node.loc.start.line)
+                            self.labelling.set_multilabel(node.callee.name, label)
+
+                    for pname in self.policy.get_patterns_with_source(arg.name):
+                        print(f"Source detected: {arg.name} in pattern {pname}")
+                        label = self.labelling.get_multilabel(node.callee.name) or MultiLabel(list(self.policy._patterns.values()))
+                        label.add_source(pname, arg.name, node.loc.start.line)
+                        self.labelling.set_multilabel(node.callee.name, label)
+
+                    print(f"Assigned variable: {arg.name}")
+
+                for pname in self.policy.get_patterns_with_sink(node.callee.name):
+                    print(f"Sink detected: {node.callee.name} in pattern {pname}")
+                    multi_label = self.labelling.get_multilabel(node.callee.name)
+                    if multi_label:
+                        illegal_flows = self.policy.detect_illegal_flows(node.callee.name, multi_label)
+                        print(illegal_flows)
+                        if illegal_flows:
+                            self.vulnerabilities.add_illegal_flow(node.callee.name, illegal_flows, node.loc.start.line)
+                            print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")
+        print(f"=== End of Function call ===")
+
 
     def visit_Program(self, node):
         for stmt in node.body:

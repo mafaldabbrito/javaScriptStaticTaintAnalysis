@@ -32,7 +32,7 @@ if __name__ == "__main__":
    visitor.visit(ast)  # ast is the top-level Program node
    print("=== Initialized Variables ===")
    for var in visitor.get_initialized_vars():
-      print(f"Variable: {var[0]}, Line: {var[1]}")
+      print(f"Variable: {var}")
 
    print("=== Vulnerabilities ===")
    for vuln in visitor.get_vulnerabilities():

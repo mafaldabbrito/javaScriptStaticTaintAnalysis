@@ -56,7 +56,7 @@ class MultiLabel:
         Only patterns present in both will be combined.
         """
         if other is None:
-            return self
+            return
         combined_patterns = list(self._patterns.values())
         new_multilabel = MultiLabel(combined_patterns)
 
@@ -67,8 +67,13 @@ class MultiLabel:
                 combined_label = label1.combine(label2)
                 new_multilabel._labels[pattern_name] = combined_label
 
-        return new_multilabel
-
+        for pattern_name in self._labels:
+            if pattern_name in other._labels:
+                label1 = self._labels[pattern_name]
+                label2 = other._labels[pattern_name]
+                combined_label = label1.combine(label2)
+                self._labels[pattern_name] = combined_label
+        return None
     def __repr__(self):
         """
         String representation of the MultiLabel.
