@@ -1,3 +1,8 @@
+from models.multilabel import MultiLabel
+from models.multilabelling import MultiLabelling
+from models.vulnerabilities import Vulnerabilities
+
+
 class NodeVisitor:
     def visit(self, node):
         if not hasattr(node, 'type'):
@@ -20,11 +25,29 @@ class NodeVisitor:
                 self.visit(value)
 
 
+
+# The TraversalVisitor should:
+# - Visit function calls and variable declarations/assignments and eventually function calls .
+# - Use the Policy to check:
+#     - If a function call is a source, sink, or sanitizer.
+# - Maintain per-variable labels via MultiLabelling.
+# - When visiting a sink:
+#     - Use Policy.detect_illegal_flows(...) to check for unsafe data flows.
+# For that the Visitor should own:
+# - A Policy instance
+# - A MultiLabelling instance
+
+
 class TraversalVisitor(NodeVisitor):
-    def __init__(self):
+    def __init__(self, policy):
         self.initialized_variables = set()
+        self.policy = policy
+        self.labelling = MultiLabelling()
+        self.vulnerabilities = Vulnerabilities()
+
 
     def visit_VariableDeclaration(self, node):
+
         print(f"=== Variable declaration: {node.kind} ===")
         print(f"At line: {node.loc.start.line}")
         if node.kind == "var":
@@ -32,9 +55,39 @@ class TraversalVisitor(NodeVisitor):
                 if hasattr(declaration, 'id'):
                     self.initialized_variables.add((declaration.id.name, node.loc.start.line))
                     print(f"Initialized variable: {declaration.id.name}")
+                    if hasattr(declaration, 'init'):
+                        if hasattr(declaration.init, 'type') and declaration.init.type == "FunctionExpression":
+                            self.visit(declaration.init)
+                        elif hasattr(declaration.init, 'type') and declaration.init.type == "CallExpression":
+                            self.visit(declaration.init)
+                        elif hasattr(declaration.init, 'type') and declaration.init.type == "AssignmentExpression":
+                            self.visit(declaration.init)
+                        elif hasattr(declaration.init, 'type') and declaration.init.type == "Identifier":
+                            for pname in self.policy.get_patterns_with_source(declaration.init.name):
+
+                                print(f"Source detected: {declaration.init.name} in pattern {pname}")
+                                label = self.labelling.get_multilabel(declaration.id.name) or MultiLabel(list(self.policy._patterns.values()))
+                                label.add_source(pname, declaration.init.name, declaration.loc.start.line)
+                                self.labelling.set_multilabel(declaration.id.name, label)
+                            
+                            print(f"Assigned variable: {declaration.init.name}")
+
+                            for pname in self.policy.get_patterns_with_sink(declaration.id.name):
+
+                                print(f"Sink detected: {declaration.id.name} in pattern {pname}")
+                                multi_label = self.labelling.get_multilabel(declaration.id.name)
+                                if multi_label:
+                                    illegal_flows = self.policy.detect_illegal_flows(declaration.id.name, multi_label)
+                                    print(illegal_flows)
+                                    if illegal_flows:
+                                        self.vulnerabilities.add_illegal_flow(declaration.id.name, illegal_flows, declaration.loc.start.line)
+                                        
+                                        print(f"Illegal flow detected for variable: {declaration.id.name} in pattern {pname}")
+                                        # Handle illegal flows as needed
         print(f"=== End of Variable declaration ===")
 
     def visit_FunctionDeclaration(self, node):
+
         print(f"=== Function: {node.id.name} ===")
         print(f"At line: {node.loc.start.line}")
         if hasattr(node.body, 'body'):
@@ -44,18 +97,23 @@ class TraversalVisitor(NodeVisitor):
         print(f"=== End of Function: {node.id.name} ===")
 
     def visit_AssignmentExpression(self, node):
+
         print(f"=== Assignment: {node.left.name} ===")
         print(f"At line: {node.loc.start.line}")
         if hasattr(node.left, 'name'):
             self.initialized_variables.add((node.left.name, node.loc.start.line))
             print(f"Assigned variable: {node.left.name}")
-        print(f"=== End of Assignment ===")
-        
-                
+        print(f"=== End of Assignment ===")     
 
     def visit_Program(self, node):
         for stmt in node.body:
             self.visit(stmt)
+
+    def get_vulnerabilities(self):
+        return self.vulnerabilities.get_all()
+    
+    def get_output(self, filepath):
+        return self.vulnerabilities.export_json(filepath)
 
     def get_initialized_vars(self):
         return self.initialized_variables

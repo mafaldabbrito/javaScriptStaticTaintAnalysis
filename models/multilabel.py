@@ -4,7 +4,9 @@ class MultiLabel:
     def __init__(self, patterns):
         """
         Constructor for MultiLabel.
-        Initializes one Label per pattern.
+
+        Generalizes the Label class in order to be able to represent distinct
+        labels corresponding to different patterns for a specific resources.
 
         :param patterns: A list of Pattern objects.
         """
@@ -16,23 +18,31 @@ class MultiLabel:
             self._labels[name] = Label()
             self._patterns[name] = pattern
 
-    def add_source(self, pattern_name, source_name):
+    def add_source(self, pattern_name, source_name, line, sanitizers=None):
         """
         Add a source to the label associated with a given pattern,
         if it's a valid source in that pattern.
+        :param pattern_name: Name of the pattern.
+        :param source_name: Name of the source.
+        :param line: Line number where the source is found.
+        :param sanitizers: Optional list of (sanitizer_name, line) tuples.
         """
         pattern = self._patterns.get(pattern_name)
         if pattern and pattern.is_source(source_name):
-            self._labels[pattern_name].add_source(source_name)
+            self._labels[pattern_name].add_source(source_name, line, sanitizers)
 
-    def add_sanitizer(self, pattern_name, source_name, sanitizer_name):
+    def add_sanitizer(self, pattern_name, source_name, sanitizer_name, line):
         """
         Add a sanitizer to the label associated with a given pattern,
         if it's a valid sanitizer in that pattern.
+        :param pattern_name: Name of the pattern.
+        :param source_name: Name of the source.
+        :param sanitizer_name: Name of the sanitizer.
+        :param line: Line number where the sanitizer is found.
         """
         pattern = self._patterns.get(pattern_name)
         if pattern and pattern.is_sanitizer(sanitizer_name):
-            self._labels[pattern_name].add_sanitizer(source_name, sanitizer_name)
+            self._labels[pattern_name].add_sanitizer(source_name, sanitizer_name, line)
 
     # Selectors
     def get_label(self, pattern_name):

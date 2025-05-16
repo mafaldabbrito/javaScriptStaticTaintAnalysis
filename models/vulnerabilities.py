@@ -8,7 +8,7 @@ class Vulnerabilities:
         """
         self._vulns = []
 
-    def add_illegal_flow(self, name, multilabel, source_positions, sink_position):
+    def add_illegal_flow(self, name, multilabel, sink_position):
         """
         Adds information about illegal flows to the internal list.
 
@@ -24,13 +24,21 @@ class Vulnerabilities:
 
             for source in label.get_sources():
                 sanitized = label.get_sanitizers(source)
+                # Initialize a counter dictionary if it doesn't exist
+                if not hasattr(self, '_pattern_counters'):
+                    self._pattern_counters = {}
+
+                # Increment the counter for this pattern_name
+                count = self._pattern_counters.get(pattern_name, 0) + 1
+                self._pattern_counters[pattern_name] = count
+
                 vuln_entry = {
-                    "vulnerability": pattern_name,
-                    "source": [source, source_positions.get(source, "?")],
+                    "vulnerability": f"{pattern_name}_{count}",
+                    "source": source,
                     "sink": [name, sink_position],
-                    "implicit_flows": "no",  # default, extendable if you track implicit flows
                     "unsanitized_flows": "yes" if not sanitized else "no",
-                    "sanitized_flows": [[ [s, source_positions.get(s, "?")] for s in sanitized ]] if sanitized else []
+                    "sanitized_flows": [[s for s in sanitized]] if sanitized else [],
+                    "implicit": "no"  # default, extendable if you track implicit flows
                 }
                 self._vulns.append(vuln_entry)
 
@@ -45,9 +53,9 @@ class Vulnerabilities:
                 f'  "vulnerability": "{vuln["vulnerability"]}",\n',
                 f'  "source": {vuln["source"]},\n',
                 f'  "sink": {vuln["sink"]},\n',
-                f'  "implicit_flows": "{vuln["implicit_flows"]}",\n',
                 f'  "unsanitized_flows": "{vuln["unsanitized_flows"]}",\n',
                 f'  "sanitized_flows": {vuln["sanitized_flows"]}\n',
+                f'  "implicit": "{vuln["implicit_flows"]}",\n'
                 '}'
             ]
             return '\n'.join(lines)
@@ -56,4 +64,4 @@ class Vulnerabilities:
 
     def export_json(self, filepath):
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(self._vulns, f, indent=2)
+                json.dump(self._vulns, f, indent=4)

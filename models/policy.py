@@ -57,7 +57,7 @@ class Policy:
                 applied_sanitizers = label.get_sanitizers(source)
 
                 # Add the source to the result regardless of sanitization
-                result.add_source(pname, source)
+                result.add_source(pname, source[0], source[1], applied_sanitizers)
 
                 # Add all applied sanitizers to the result
                 for sanitizer in applied_sanitizers:
