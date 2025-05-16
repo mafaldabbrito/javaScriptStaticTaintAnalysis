@@ -11,7 +11,7 @@ class Parser:
         # Use esprima to parse the JavaScript code
         # and generate the AST
         try:
-            ast_tree = parseScript(js_code, {"range": True})
+            ast_tree = parseScript(js_code, { "loc": True })
             return ast_tree
         except Exception as e:
             print(f"Error parsing JavaScript: {e}")
