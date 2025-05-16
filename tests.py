@@ -40,3 +40,8 @@ if __name__ == "__main__":
    
    # Export vulnerabilities to JSON
    visitor.get_output("vulnerabilities.json")
+
+   print("=== MultiLabelling ===")
+   for var, label in visitor.labelling.get_all_mappings().items():
+      print(f"Variable: {var}, Label: {label}")
+

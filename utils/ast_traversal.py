@@ -103,6 +103,37 @@ class TraversalVisitor(NodeVisitor):
         if hasattr(node.left, 'name'):
             self.initialized_variables.add((node.left.name, node.loc.start.line))
             print(f"Assigned variable: {node.left.name}")
+            if hasattr(node.right, 'type') and node.right.type == "CallExpression":
+                self.visit(node.right)
+            elif hasattr(node.right, 'type') and node.right.type == "Identifier":
+
+                if node.right.name not in self.initialized_variables:
+                    for pname in self.policy.get_patterns_without_source(node.right.name):
+                        print(f"Source added: {node.right.name} in pattern {pname}")
+                        label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+                        label.add_source(pname, node.right.name, node.loc.start.line)
+                        label.combine(self.labelling.get_multilabel(node.right.name))
+                        self.labelling.set_multilabel(node.left.name, label)
+
+               
+                for pname in self.policy.get_patterns_with_source(node.right.name):
+                    print(f"Source detected: {node.right.name} in pattern {pname}")
+                    label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+                    label.add_source(pname, node.right.name, node.loc.start.line)
+                    label.combine(self.labelling.get_multilabel(node.right.name))
+                    self.labelling.set_multilabel(node.left.name, label)
+
+                print(f"Assigned variable: {node.right.name}")
+
+                for pname in self.policy.get_patterns_with_sink(node.left.name):
+                    print(f"Sink detected: {node.left.name} in pattern {pname}")
+                    multi_label = self.labelling.get_multilabel(node.left.name)
+                    if multi_label:
+                        illegal_flows = self.policy.detect_illegal_flows(node.left.name, multi_label)
+                        print(illegal_flows)
+                        if illegal_flows:
+                            self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
+                            print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
         print(f"=== End of Assignment ===")     
 
     def visit_Program(self, node):

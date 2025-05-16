@@ -6,7 +6,7 @@ class MultiLabelling:
         """
         self._mapping = {}
 
-    # Selector
+    # Getter
     def get_multilabel(self, name):
         """
         Returns the MultiLabel assigned to the given variable name.
@@ -15,7 +15,7 @@ class MultiLabelling:
         """
         return self._mapping.get(name)
 
-    # Getter
+    # Setter
     def set_multilabel(self, name, multilabel):
         """
         Updates the MultiLabel assigned to the given variable name.

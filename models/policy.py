@@ -16,6 +16,10 @@ class Policy:
     def get_patterns_with_source(self, source_name):
         """Returns a list of pattern names for which the given name is a source."""
         return [name for name, p in self._patterns.items() if p.is_source(source_name)]
+    
+    def get_patterns_without_source(self, source_name):
+        """Returns a list of pattern names for which the given name is not a source."""
+        return [name for name, p in self._patterns.items() if not p.is_source(source_name)]
 
     def get_patterns_with_sanitizer(self, sanitizer_name):
         """Returns a list of pattern names for which the given name is a sanitizer."""
