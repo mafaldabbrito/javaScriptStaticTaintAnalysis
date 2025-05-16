@@ -6,56 +6,59 @@ from models.vulnerabilities import Vulnerabilities
 
 
 if __name__ == "__main__":
-       # Define patterns
-    # dom_xss = Pattern(
-    #     name="DOM XSS",
-    #     sources=["document.URL"],
-    #     sanitizers=["DOMPurify.sanitize"],
-    #     sinks=["document.write"]
-    # )
+   # Define patterns
+   # dom_xss = Pattern(
+   #     name="DOM XSS",
+   #     sources=["document.URL"],
+   #     sanitizers=["DOMPurify.sanitize"],
+   #     sinks=["document.write"]
+   # )
 
-    # patterns = [dom_xss]
-    # policy = Policy(patterns)
+   # patterns = [dom_xss]
+   # policy = Policy(patterns)
 
-    # # Simulate a program
-    # multilabel = MultiLabel(patterns)
-    # multilabel.add_source("DOM XSS", "document.URL")
-    # multilabel.add_sanitizer("DOM XSS",  "document.URL", "DOMPurify.sanitize")  # <- Comment this line to test unsanitized
+   # # Simulate a program
+   # multilabel = MultiLabel(patterns)
+   # multilabel.add_source("DOM XSS", "document.URL")
+   # multilabel.add_sanitizer("DOM XSS",  "document.URL", "DOMPurify.sanitize")  # <- Comment this line to test unsanitized
 
-    # # Track variable flows
-    # env = MultiLabelling()
-    # env.set_multilabel("output", multilabel)
+   # # Track variable flows
+   # env = MultiLabelling()
+   # env.set_multilabel("output", multilabel)
 
-    # # Check for illegal flow
-    # illegal_flows = policy.detect_illegal_flows("document.write", env.get_multilabel("output"))
+   # # Check for illegal flow
+   # illegal_flows = policy.detect_illegal_flows("document.write", env.get_multilabel("output"))
 
-    # # Report
-    # vulnerabilities = Vulnerabilities()
-    # source_positions = {
-    #     "document.URL": 1,
-    #     "DOMPurify.sanitize": 3
-    # }
-    # sink_position = 4
+   # # Report
+   # vulnerabilities = Vulnerabilities()
+   # source_positions = {
+   #     "document.URL": 1,
+   #     "DOMPurify.sanitize": 3
+   # }
+   # sink_position = 4
 
-    # vulnerabilities.add_illegal_flow("document.write", illegal_flows, source_positions, sink_position)
+   # vulnerabilities.add_illegal_flow("document.write", illegal_flows, source_positions, sink_position)
 
-    # print("=== Detected Vulnerabilities ===")
-    # for v in vulnerabilities.get_all():
-    #     print(v)
+   # print("=== Detected Vulnerabilities ===")
+   # for v in vulnerabilities.get_all():
+   #     print(v)
 
-    # vulnerabilities.export_json("vulnerabilities_report.json")
-    # print("\nReport saved to vulnerabilities_report.json")
+   # vulnerabilities.export_json("vulnerabilities_report.json")
+   # print("\nReport saved to vulnerabilities_report.json")
 
-    # Test AST Parser
-    from utils.ast_parser import Parser
-    from utils.ast_traversal import TraversalVisitor
-    parser=Parser("test.js")
-    ast_tree = parser.parse_js_code()
-    # if ast_tree:
-    #     print("AST Tree:")
-    #     print(ast_tree)
-    # else:
-    #     print("Failed to parse the JavaScript code.")
-    # Test AST Traversal
-    traversal_visitor = TraversalVisitor()
-    traversal_visitor.visit(ast_tree)
+   # Test AST Parser
+   from utils.ast_parser import Parser
+   from utils.ast_traversal import TraversalVisitor
+   parser=Parser("test.js")
+   ast_tree = parser.parse_js_code()
+   # if ast_tree:
+   #     print("AST Tree:")
+   #     print(ast_tree)
+   # else:
+   #     print("Failed to parse the JavaScript code.")
+   # Test AST Traversal
+   traversal_visitor = TraversalVisitor()
+   traversal_visitor.visit(ast_tree)
+   print("=== Initialized Variables ===")
+   for var in traversal_visitor.get_initialied_vars():
+      print(f"Variable: {var[0]}, Line: {var[1]}")
