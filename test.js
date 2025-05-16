@@ -1,6 +1,6 @@
-var x = 10;
-function soma(a, b) {
-    return a + b;
-}
-var resultado = soma(x, 5);
-console.log(resultado);
+a = "";
+b = c();
+d(a);
+e(b);
+
+// tip: variables might be tainted or not before they reach a sink

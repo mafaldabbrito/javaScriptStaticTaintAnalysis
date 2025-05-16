@@ -50,15 +50,15 @@ if __name__ == "__main__":
    from utils.ast_parser import Parser
    from utils.ast_traversal import TraversalVisitor
    parser=Parser("test.js")
-   ast_tree = parser.parse_js_code()
+   ast = parser.parse_js_code()
    # if ast_tree:
    #     print("AST Tree:")
    #     print(ast_tree)
    # else:
    #     print("Failed to parse the JavaScript code.")
    # Test AST Traversal
-   traversal_visitor = TraversalVisitor()
-   traversal_visitor.visit(ast_tree)
+   visitor = TraversalVisitor()
+   visitor.visit(ast)  # ast is the top-level Program node
    print("=== Initialized Variables ===")
-   for var in traversal_visitor.get_initialied_vars():
+   for var in visitor.get_initialized_vars():
       print(f"Variable: {var[0]}, Line: {var[1]}")
