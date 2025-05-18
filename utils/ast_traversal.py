@@ -169,8 +169,13 @@ class TraversalVisitor(NodeVisitor):
                    continue
 
                 elif hasattr(arg, 'type') and arg.type == "CallExpression":
+
                     new_label=self.visit(arg)
+                    for pname in self.policy.get_patterns_with_source(arg.callee.name):
+                        print(f"Source detected: {arg.callee.name} in pattern {pname}")
+                        function_label.add_source(pname, arg.callee.name, node.loc.start.line)
                     new_label=function_label.combine(new_label)
+
 
                 elif hasattr(arg, 'type') and arg.type == "BinaryExpression":
                     new_label=self.visit(arg)

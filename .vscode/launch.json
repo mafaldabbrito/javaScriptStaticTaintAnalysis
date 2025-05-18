@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/3-expr/3a-expr-func-calls.js patterns/3-expr/3a-expr-func-calls.patterns.json "
+            "args": "slices/3-expr/3b-expr-func-calls.js patterns/3-expr/3b-expr-func-calls.patterns.json "
         }
     ],
 }
