@@ -4,13 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        {"name":"Python Debugger: Current File","type":"debugpy","request":"launch","program":"${file}","console":"integratedTerminal"},
         {
-            "name": "Python Debugger: Current File",
+            "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal"
+            "program": "js_analyzer.py",
+            "console": "integratedTerminal",
+            "args": "slices/2-expr-binary-ops/2-expr-binary-ops.js patterns/2-expr-binary-ops/2-expr-binary-ops.patterns.json "
         }
-    ]
+    ],
 }

@@ -55,16 +55,11 @@ class Policy:
             if not label:
                 continue
 
-            pattern = self._patterns[pname]
-            for source in label.get_sources():
-               
-                applied_sanitizers = label.get_sanitizers(source)
+            
+            for source in label.get_sources_and_sanitizers():
 
                 # Add the source to the result regardless of sanitization
-                result.add_source(pname, source[0], source[1], applied_sanitizers)
+                result.add_source(pname, source[0], source[1], source[2])
 
-                # Add all applied sanitizers to the result
-                for sanitizer in applied_sanitizers:
-                    result.add_sanitizer(pname, source, sanitizer)
 
         return result

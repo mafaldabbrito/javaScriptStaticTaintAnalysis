@@ -29,16 +29,19 @@ class MultiLabel:
         if pattern_name in self._patterns:
             self._labels[pattern_name].add_source(source_name, line, sanitizers)
 
-    def add_sanitizer(self, pattern_name, source_name, sanitizer_name, line):
+    def add_sanitizer(self, pattern_name, sanitizer_name, line):
         """
-        Add a sanitizer to the label associated with a given pattern,
+        Add a sanitizer to all sources of the label associated with a given pattern.
         :param pattern_name: Name of the pattern.
-        :param source_name: Name of the source.
         :param sanitizer_name: Name of the sanitizer.
         :param line: Line number where the sanitizer is found.
         """
         if pattern_name in self._patterns:
-            self._labels[pattern_name].add_sanitizer(source_name, sanitizer_name, line)
+            label = self._labels[pattern_name]
+            for source_info in label.get_sources_and_sanitizers():
+                source_name = source_info[0] 
+                if source_name is not None:
+                    label.add_sanitizer(source_name, source_info[1], sanitizer_name, line)
 
     # Selectors
     def get_label(self, pattern_name):

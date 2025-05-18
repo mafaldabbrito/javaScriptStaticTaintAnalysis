@@ -18,30 +18,51 @@ class Vulnerabilities:
         :param source_positions: dict mapping source names to their line numbers (e.g., {"document.URL": 1})
         :param sink_position: line number of the sink (e.g., 4)
         """
+        if not hasattr(self, '_pattern_counters'):
+            self._pattern_counters = {}
+        if not hasattr(self, '_flow_index'):
+            self._flow_index = {}
+
         for pattern_name in multilabel.get_all_labels():
             label = multilabel.get_label(pattern_name)
             if not label:
                 continue
 
-            for source in label.get_sources():
-                sanitized = label.get_sanitizers(source)
-                # Initialize a counter dictionary if it doesn't exist
-                if not hasattr(self, '_pattern_counters'):
-                    self._pattern_counters = {}
+            for source_info in label.get_sources_and_sanitizers():
+                sanitized = source_info[2]  # This is a list of sanitizers
+                source = (source_info[0], source_info[1])  # (source_name, line_number)
+                sink = (name, sink_position)
+                flow_key = (source[0], source[1], sink[0], sink[1], pattern_name)
 
-                # Increment the counter for this pattern_name
-                count = self._pattern_counters.get(pattern_name, 0) + 1
-                self._pattern_counters[pattern_name] = count
+                # Check if this flow already exists
+                idx = self._flow_index.get(flow_key)
+                if idx is not None:
+                    vuln_entry = self._vulns[idx]
+                    # Extend sanitized_flows if new sanitizers are present
+                    if sanitized and sanitized not in vuln_entry["sanitized_flows"]:
+                        vuln_entry["sanitized_flows"].extend(sanitized)
+                    # Update unsanitized_flows: only "no" if all appearances have sanitizers
+                    if not sanitized:
+                        vuln_entry["unsanitized_flows"] = "yes"
+                    else:
+                        # Only set to "no" if unsanitized_flows is not already "yes"
+                        if vuln_entry["unsanitized_flows"] != "yes":
+                            vuln_entry["unsanitized_flows"] = "no"
+                else:
+                    # Increment the counter for this pattern_name
+                    count = self._pattern_counters.get(pattern_name, 0) + 1
+                    self._pattern_counters[pattern_name] = count
 
-                vuln_entry = {
-                    "vulnerability": f"{pattern_name}_{count}",
-                    "source": source,
-                    "sink": [name, sink_position],
-                    "unsanitized_flows": "yes" if not sanitized else "no",
-                    "sanitized_flows": [[s for s in sanitized]] if sanitized else [],
-                    "implicit": "no"  # default, extendable if you track implicit flows
-                }
-                self._vulns.append(vuln_entry)
+                    vuln_entry = {
+                        "vulnerability": f"{pattern_name}_{count}",
+                        "source": source,
+                        "sink": list(sink),
+                        "unsanitized_flows": "yes" if not sanitized else "no",
+                        "sanitized_flows": [sanitized] if sanitized else [],
+                        "implicit": "no"
+                    }
+                    self._vulns.append(vuln_entry)
+                    self._flow_index[flow_key] = len(self._vulns) - 1
 
     def get_all(self):
         """Returns all collected vulnerabilities."""
