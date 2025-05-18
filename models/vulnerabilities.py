@@ -38,9 +38,9 @@ class Vulnerabilities:
                 idx = self._flow_index.get(flow_key)
                 if idx is not None:
                     vuln_entry = self._vulns[idx]
-                    # Extend sanitized_flows if new sanitizers are present
+                    # Append sanitized_flows if new sanitizers are present
                     if sanitized and sanitized not in vuln_entry["sanitized_flows"]:
-                        vuln_entry["sanitized_flows"].extend(sanitized)
+                        vuln_entry["sanitized_flows"].append(sanitized)
                     # Update unsanitized_flows: only "no" if all appearances have sanitizers
                     if not sanitized:
                         vuln_entry["unsanitized_flows"] = "yes"

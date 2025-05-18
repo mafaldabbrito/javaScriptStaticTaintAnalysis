@@ -107,8 +107,9 @@ class TraversalVisitor(NodeVisitor):
                     print(f"Source detected: {node.right.callee.name} in pattern {pname}")
                     current_label.add_source(pname, node.right.callee.name, node.loc.start.line)
                     
-                # Combine the labels from the right side with the left side and set it
-                current_label.combine(self.labelling.get_multilabel(node.right.callee.name))
+
+                new_label=self.visit(node.right)
+                current_label.combine(new_label)
                 self.labelling.set_multilabel(node.left.name, current_label)
 
                 for pname in self.policy.get_patterns_with_sink(node.left.name):
@@ -120,10 +121,6 @@ class TraversalVisitor(NodeVisitor):
                         if illegal_flows:
                             self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
                             print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
-
-                new_label=self.visit(node.right)
-                current_label.combine(new_label)
-                self.labelling.set_multilabel(node.left.name, current_label)
 
             elif hasattr(node.right, 'type') and node.right.type == "Identifier":
 
@@ -171,13 +168,13 @@ class TraversalVisitor(NodeVisitor):
                 if hasattr(arg, 'type') and arg.type == "Literal":
                    continue
 
-                elif hasattr(node.right, 'type') and node.right.type == "CallExpression":
-                    new_label=self.visit(node.right)
-                    function_label.combine(new_label)
+                elif hasattr(arg, 'type') and arg.type == "CallExpression":
+                    new_label=self.visit(arg)
+                    new_label=function_label.combine(new_label)
 
                 elif hasattr(arg, 'type') and arg.type == "BinaryExpression":
                     new_label=self.visit(arg)
-                    function_label.combine(new_label)
+                    new_label=function_label.combine(new_label)
                 elif hasattr(arg, 'type') and arg.type == "Identifier":
                    
 
