@@ -45,7 +45,7 @@ class TraversalVisitor(NodeVisitor):
         self.labelling = MultiLabelling()
         self.vulnerabilities = Vulnerabilities()
 
-
+    # Not tested in this implementation
     def visit_VariableDeclaration(self, node):
 
         print(f"=== Variable declaration: {node.kind} ===")
@@ -56,13 +56,9 @@ class TraversalVisitor(NodeVisitor):
                     self.initialized_variables.add(declaration.id.name)
                     print(f"Initialized variable: {declaration.id.name}")
                     if hasattr(declaration, 'init'):
-                        if hasattr(declaration.init, 'type') and declaration.init.type == "FunctionExpression":
+                        if hasattr(declaration.init, 'type') and not declaration.init.type == "Identifier":
                             self.visit(declaration.init)
-                        elif hasattr(declaration.init, 'type') and declaration.init.type == "CallExpression":
-                            self.visit(declaration.init)
-                        elif hasattr(declaration.init, 'type') and declaration.init.type == "AssignmentExpression":
-                            self.visit(declaration.init)
-                        elif hasattr(declaration.init, 'type') and declaration.init.type == "Identifier":
+                        else:
                             for pname in self.policy.get_patterns_with_source(declaration.init.name):
 
                                 print(f"Source detected: {declaration.init.name} in pattern {pname}")
@@ -86,6 +82,7 @@ class TraversalVisitor(NodeVisitor):
                                         # Handle illegal flows as needed
         print(f"=== End of Variable declaration ===")
 
+    # Not tested in this implementation
     def visit_FunctionDeclaration(self, node):
 
         print(f"=== Function: {node.id.name} ===")
@@ -97,7 +94,7 @@ class TraversalVisitor(NodeVisitor):
         print(f"=== End of Function: {node.id.name} ===")
 
     def visit_AssignmentExpression(self, node):
-
+        new_label = None
         print(f"=== Assignment: {node.left.name} ===")
         print(f"At line: {node.loc.start.line}")
         if hasattr(node.left, 'name'):
@@ -124,7 +121,10 @@ class TraversalVisitor(NodeVisitor):
                             self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
                             print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
 
-                self.visit(node.right)
+                new_label=self.visit(node.right)
+                current_label.combine(new_label)
+                self.labelling.set_multilabel(node.left.name, current_label)
+
             elif hasattr(node.right, 'type') and node.right.type == "Identifier":
 
                 current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
@@ -143,7 +143,7 @@ class TraversalVisitor(NodeVisitor):
                     current_label.add_source(pname, node.right.name, node.loc.start.line)
                     
                 # Combine the labels from the right side with the left side and set it
-                current_label.combine(self.labelling.get_multilabel(node.right.name))
+                new_label=current_label.combine(self.labelling.get_multilabel(node.right.name))
                 self.labelling.set_multilabel(node.left.name, current_label)
 
                 for pname in self.policy.get_patterns_with_sink(node.left.name):
@@ -155,9 +155,11 @@ class TraversalVisitor(NodeVisitor):
                         if illegal_flows:
                             self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
                             print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
-        print(f"=== End of Assignment ===")     
+        print(f"=== End of Assignment ===")    
+        return new_label 
 
     def visit_CallExpression(self, node):
+        new_label = None
         print(f"=== Function call: {node.callee.name} ===")
         print(f"At line: {node.loc.start.line}")
         
@@ -167,7 +169,8 @@ class TraversalVisitor(NodeVisitor):
 
             for arg in node.arguments:
                 if hasattr(node.right, 'type') and node.right.type == "CallExpression":
-                    self.visit(node.right)
+                    new_label=self.visit(node.right)
+                    function_label.combine(new_label)
 
                 elif hasattr(arg, 'type') and arg.type == "Identifier":
                    
@@ -184,7 +187,7 @@ class TraversalVisitor(NodeVisitor):
                         function_label.add_source(pname, arg.name, node.loc.start.line)
 
                     # Combine the labels from the right side with the left side but don't set it because it's a function call
-                    function_label.combine(self.labelling.get_multilabel(arg.name))
+                    new_label=function_label.combine(self.labelling.get_multilabel(arg.name))
 
         for pname in self.policy.get_patterns_with_sink(node.callee.name):
                     print(f"Sink function detected: {node.callee.name} in pattern {pname}")
@@ -193,10 +196,30 @@ class TraversalVisitor(NodeVisitor):
                         print(illegal_flows)
                         if illegal_flows:
                             self.vulnerabilities.add_illegal_flow(node.callee.name, illegal_flows, node.loc.start.line)
-                            print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")        
+                            print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")   
+
+             
         print(f"=== End of Function call ===")
+        return new_label
 
+    def visit_BinaryExpression(self, node):
+        new_label = MultiLabel(list(self.policy._patterns.values()))
+        print(f"=== Binary expression: {node.operator} ===")
+        print(f"At line: {node.loc.start.line}")
+        if hasattr(node, 'left'):
+            left_label=self.visit(node.left)
+        if hasattr(node, 'right'):
+            right_label=self.visit(node.right)
 
+        left_label.combine(new_label)
+        new_label=right_label.combine(left_label)
+
+        print(f"=== End of Binary expression ===")
+
+        return new_label
+    
+
+    
     def visit_Program(self, node):
         for stmt in node.body:
             self.visit(stmt)
