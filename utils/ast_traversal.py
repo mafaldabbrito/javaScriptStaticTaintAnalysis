@@ -142,6 +142,7 @@ class TraversalVisitor(NodeVisitor):
         new_label=self.visit(node.right)
 
         if hasattr(node.left, 'type') and node.left.type == "MemberExpression":
+            self.initialized_variables.add(node.left.property.name)
             # combine the labels from the right and the object and property of the MemberExpression
             object_label = self.labelling.get_multilabel(node.left.object) or MultiLabel(list(self.policy._patterns.values()))
             property_label = self.labelling.get_multilabel(node.left.property) or MultiLabel(list(self.policy._patterns.values()))
@@ -224,12 +225,19 @@ class TraversalVisitor(NodeVisitor):
                     function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
                     new_label=function_label
 
-        # Check if the function is a source and add it to the label
-        for pname in self.policy.get_patterns_with_source(node.callee.name):
-            print(f"Source detected: {node.callee.name} in pattern {pname}")
-            new_label.add_source(pname, node.callee.name, node.loc.start.line)
+        if hasattr(node.callee, 'type') and node.callee.type == "MemberExpression":
+            new_label=self.visit(node.callee.object)
+            function_callee_name=node.callee.property.name
 
-        self.analyze_if_sink_vulnerabilities(node.callee.name, node.loc.start.line, new_label)
+        else:
+            function_callee_name=node.callee.name
+
+        # Check if the function is a source and add it to the label
+        for pname in self.policy.get_patterns_with_source(function_callee_name):
+            print(f"Source detected: {function_callee_name} in pattern {pname}")
+            new_label.add_source(pname, function_callee_name, node.loc.start.line)
+
+        self.analyze_if_sink_vulnerabilities(function_callee_name, node.loc.start.line, new_label)
 
              
         print(f"=== End of Function call ===")
