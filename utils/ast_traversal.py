@@ -97,22 +97,62 @@ class TraversalVisitor(NodeVisitor):
         new_label = None
         print(f"=== Assignment: {node.left.name} ===")
         print(f"At line: {node.loc.start.line}")
+
         if hasattr(node.left, 'name'):
+
             self.initialized_variables.add(node.left.name)
             print(f"Initialized variable: {node.left.name}")
+
+            
+            # Label of the left side
+            current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+
             if hasattr(node.right, 'type') and node.right.type == "CallExpression":
-                current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
-
-                for pname in self.policy.get_patterns_with_source(node.right.callee.name):
-                    print(f"Source detected: {node.right.callee.name} in pattern {pname}")
-                    current_label.add_source(pname, node.right.callee.name, node.loc.start.line)
-                    
-
+                
+                right_name= node.right.callee.name
+                
+                # Goes into the function call
+                # Comes out with a label from the function and its arguments
                 new_label=self.visit(node.right)
                 current_label.combine(new_label)
                 self.labelling.set_multilabel(node.left.name, current_label)
 
-                for pname in self.policy.get_patterns_with_sink(node.left.name):
+                
+
+            elif hasattr(node.right, 'type') and node.right.type == "Identifier":
+
+                print(f"Assigned variable: {node.right.name}")
+                right_name= node.right.name
+
+                # Check if the right side is a source because is not initialized
+                if node.right.name not in self.initialized_variables:
+                    for pname in self.policy.get_patterns_without_source(node.right.name):
+                        print(f"Source added: {node.right.name} in pattern {pname}")
+                        current_label.add_source(pname, node.right.name, node.loc.start.line)
+                       
+                    
+                # Combine the labels from the right side with the left side and set it
+                new_label=current_label.combine(self.labelling.get_multilabel(node.right.name))
+                self.labelling.set_multilabel(node.left.name, current_label)
+            
+            elif hasattr(node.right, 'type') and node.right.type == "BinaryExpression":
+                right_name= node.right.operator
+                new_label=self.visit(node.right)
+                current_label.combine(new_label)
+                self.labelling.set_multilabel(node.left.name, current_label)
+
+            elif hasattr(node.right, 'type') and node.right.type == "Literal":
+                right_name= node.right.value
+                
+
+        
+        # Check if the right side is a source
+        for pname in self.policy.get_patterns_with_source(right_name):
+            print(f"Source detected: {right_name} in pattern {pname}")
+            current_label.add_source(pname, right_name, node.loc.start.line)
+
+        # Check if the left side is a sink
+        for pname in self.policy.get_patterns_with_sink(node.left.name):
                     print(f"Sink detected: {node.left.name} in pattern {pname}")
                     multi_label = self.labelling.get_multilabel(node.left.name)
                     if multi_label:
@@ -122,36 +162,6 @@ class TraversalVisitor(NodeVisitor):
                             self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
                             print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
 
-            elif hasattr(node.right, 'type') and node.right.type == "Identifier":
-
-                current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
-                print(f"Assigned variable: {node.right.name}")
-
-
-                if node.right.name not in self.initialized_variables:
-                    for pname in self.policy.get_patterns_without_source(node.right.name):
-                        print(f"Source added: {node.right.name} in pattern {pname}")
-                        current_label.add_source(pname, node.right.name, node.loc.start.line)
-                       
-
-                # Check if the right side is a source
-                for pname in self.policy.get_patterns_with_source(node.right.name):
-                    print(f"Source detected: {node.right.name} in pattern {pname}")
-                    current_label.add_source(pname, node.right.name, node.loc.start.line)
-                    
-                # Combine the labels from the right side with the left side and set it
-                new_label=current_label.combine(self.labelling.get_multilabel(node.right.name))
-                self.labelling.set_multilabel(node.left.name, current_label)
-
-                for pname in self.policy.get_patterns_with_sink(node.left.name):
-                    print(f"Sink detected: {node.left.name} in pattern {pname}")
-                    multi_label = self.labelling.get_multilabel(node.left.name)
-                    if multi_label:
-                        illegal_flows = self.policy.detect_illegal_flows(node.left.name, multi_label)
-                        print(illegal_flows)
-                        if illegal_flows:
-                            self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
-                            print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
         print(f"=== End of Assignment ===")    
         return new_label 
 
@@ -171,15 +181,15 @@ class TraversalVisitor(NodeVisitor):
                 elif hasattr(arg, 'type') and arg.type == "CallExpression":
 
                     new_label=self.visit(arg)
-                    for pname in self.policy.get_patterns_with_source(arg.callee.name):
-                        print(f"Source detected: {arg.callee.name} in pattern {pname}")
-                        function_label.add_source(pname, arg.callee.name, node.loc.start.line)
-                    new_label=function_label.combine(new_label)
-
+                    arg_name=arg.callee.name
+                    
+                    
 
                 elif hasattr(arg, 'type') and arg.type == "BinaryExpression":
+                    arg_name=arg.operator
                     new_label=self.visit(arg)
                     new_label=function_label.combine(new_label)
+                    
                 elif hasattr(arg, 'type') and arg.type == "Identifier":
                    
 
@@ -189,13 +199,15 @@ class TraversalVisitor(NodeVisitor):
                             print(f"Source added: {arg.name} in pattern {pname}")
                             function_label.add_source(pname, arg.name, node.loc.start.line)
                             
+                    # Check if the argument is a source
+                    new_label=self.labelling.get_multilabel(arg.name)
+                    arg_name=arg.name
 
-                    for pname in self.policy.get_patterns_with_source(arg.name):
-                        print(f"Source detected: {arg.name} in pattern {pname}")
-                        function_label.add_source(pname, arg.name, node.loc.start.line)
-
-                    # Combine the labels from the right side with the left side but don't set it because it's a function call
-                    new_label=function_label.combine(self.labelling.get_multilabel(arg.name))
+                for pname in self.policy.get_patterns_with_source(arg_name):
+                        print(f"Source detected: {arg_name} in pattern {pname}")
+                        function_label.add_source(pname, arg_name, node.loc.start.line)
+                
+                new_label=function_label.combine(new_label)
 
                 for pname in self.policy.get_patterns_with_sanitizer(node.callee.name):
                     print(f"Sanitizer detected: {node.callee.name} in pattern {pname}")
