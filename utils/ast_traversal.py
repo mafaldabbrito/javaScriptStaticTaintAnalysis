@@ -1,3 +1,4 @@
+from copy import deepcopy
 from models.multilabel import MultiLabel
 from models.multilabelling import MultiLabelling
 from models.vulnerabilities import Vulnerabilities
@@ -134,7 +135,7 @@ class TraversalVisitor(NodeVisitor):
 
             # Visit the left side of the assignment
             # Label of the left side
-            current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
+            current_label = deepcopy(self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values())))
 
         # Visit the right side of the assignment
         # Combine the labels from the right side with the left side
@@ -158,7 +159,7 @@ class TraversalVisitor(NodeVisitor):
             self.analyze_if_sink_vulnerabilities(node.left.property.name, node.loc.start.line)
 
         else:
-            current_label.combine(new_label)
+            new_label=current_label.combine(new_label)
             self.labelling.set_multilabel(node.left.name, current_label)
 
             # Check if the left side is a sink and if so detect illegal flows and add them to the vulnerabilities
@@ -322,6 +323,34 @@ class TraversalVisitor(NodeVisitor):
         
         return current_label
     
+    def visit_IfStatement(self, node):
+        """
+        Visit an IfStatement node in the AST and process its consequent and alternate branches.
+
+        Parameters:
+        node: The AST node representing the if statement. Should have 'test', 'consequent', and 'alternate' attributes.
+
+        Returns:
+        None
+        """ 
+          
+        print(f"=== If statement ===")
+        print(f"At line: {node.loc.start.line}")
+        # self.visit(node.test)
+        consequent_visitor = deepcopy(self)
+        consequent_visitor.visit(node.consequent)
+        
+
+        if hasattr(node, 'alternate'):
+            alternate_visitor = deepcopy(self)
+            alternate_visitor.visit(node.alternate)
+            # Join the visitors to combine their findings
+            self.join_visitors(alternate_visitor)
+            
+        self.join_visitors(consequent_visitor)
+
+        print(f"=== End of If statement ===")
+    
     def visit_Program(self, node):
         """
         Visit a Program node in the AST and process all statements in its body.
@@ -364,3 +393,17 @@ class TraversalVisitor(NodeVisitor):
         set: The set of initialized variable names.
         """
         return self.initialized_variables
+    
+    def join_visitors(self, other):
+        """
+        Join the current visitor with another visitor.
+
+        Parameters:
+        other: Another TraversalVisitor instance to join with.
+
+        Returns:
+        None
+        """
+        self.labelling.combine(other.labelling)
+        self.vulnerabilities.combine(other.vulnerabilities)
+        

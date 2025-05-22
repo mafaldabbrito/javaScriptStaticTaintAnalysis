@@ -44,5 +44,5 @@ if __name__ == "__main__":
 
    print("=== MultiLabelling ===")
    for var, label in visitor.labelling.get_all_mappings().items():
-      print(f"Variable: {var}, Label: {label}")
+      print(f"Variable: {var}, Label: {label}\n")
 

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/3-expr/3c-expr-attributes.js patterns/3-expr/3c-expr-attributes.patterns.json "
+            "args": "slices/4-conds-branching/4b-conds-branching.js patterns/4-conds-branching/4b-conds-branching.patterns.json "
         }
     ],
 }

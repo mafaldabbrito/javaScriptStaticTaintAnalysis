@@ -24,6 +24,20 @@ class MultiLabelling:
         """
         self._mapping[name] = multilabel
 
+    def combine(self, other):
+        """
+        Combines this MultiLabelling with another MultiLabelling object.
+        If a variable name exists in both, the other's MultiLabel overwrites the current one.
+        :param other: Another MultiLabelling object.
+        :return: A new MultiLabelling object with the combined mappings.
+        """
+        for name, other_label in other._mapping.items():
+            if name in self._mapping:
+                self._mapping[name] = self._mapping[name].combine(other_label)
+            else:
+                self._mapping[name] = other_label
+
+
     # Helper method to get all mappings (for inspection)
     def get_all_mappings(self):
         """

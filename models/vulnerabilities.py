@@ -8,6 +8,9 @@ class Vulnerabilities:
         Constructor: initializes the internal storage for discovered vulnerabilities.
         """
         self._vulns = []
+        self._pattern_counters = {}
+        self._flow_index = {}
+
 
     def add_illegal_flow(self, name, multilabel, sink_position):
         """
@@ -44,10 +47,7 @@ class Vulnerabilities:
                     # Update unsanitized_flows: only "no" if all appearances have sanitizers
                     if not sanitized:
                         vuln_entry["unsanitized_flows"] = "yes"
-                    else:
-                        # Only set to "no" if unsanitized_flows is not already "yes"
-                        if vuln_entry["unsanitized_flows"] != "yes":
-                            vuln_entry["unsanitized_flows"] = "no"
+                    
                 else:
                     # Increment the counter for this pattern_name
                     count = self._pattern_counters.get(pattern_name, 0) + 1
@@ -63,6 +63,34 @@ class Vulnerabilities:
                     }
                     self._vulns.append(vuln_entry)
                     self._flow_index[flow_key] = len(self._vulns) - 1
+    
+    def combine(self, other):
+        """
+        Combines this Vulnerabilities object with another one.
+        If a vulnerability exists in both, the other's information overwrites the current one.
+
+        :param other: Another Vulnerabilities object.
+        :return: A new Vulnerabilities object with the combined vulnerabilities.
+        """
+        for other_vuln in other._vulns:
+            # Check if this vulnerability already exists
+            existing_vuln = next((v for v in self._vulns if v["source"] == other_vuln["source"] and v["sink"] == other_vuln["sink"]), None)
+            if existing_vuln:
+                # Update existing vulnerability
+                if other_vuln["unsanitized_flows"] == "no" and existing_vuln["unsanitized_flows"] == "no":
+                    existing_vuln["unsanitized_flows"] = "no" 
+                else:
+                    existing_vuln["unsanitized_flows"] = "yes"
+                
+                existing_vuln["sanitized_flows"].extend(other_vuln["sanitized_flows"])
+            else:
+                # Add new vulnerability
+                # Increment the pattern counter for the new vulnerability
+                pattern_name = other_vuln["vulnerability"].split("_")[0]
+                count = self._pattern_counters.get(pattern_name, 0) + 1
+                self._pattern_counters[pattern_name] = count
+                other_vuln["vulnerability"] = f"{pattern_name}_{count}"
+                self._vulns.append(other_vuln)
 
     def get_all(self):
         """Returns all collected vulnerabilities."""
