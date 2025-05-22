@@ -89,18 +89,8 @@ class TraversalVisitor(NodeVisitor):
                             
                             print(f"Assigned variable: {declaration.init.name}")
 
-                            for pname in self.policy.get_patterns_with_sink(declaration.id.name):
+                            self.analyze_if_sink_vulnerabilities(declaration.id.name, declaration.loc.start.line)
 
-                                print(f"Sink detected: {declaration.id.name} in pattern {pname}")
-                                multi_label = self.labelling.get_multilabel(declaration.id.name)
-                                if multi_label:
-                                    illegal_flows = self.policy.detect_illegal_flows(declaration.id.name, multi_label)
-                                    print(illegal_flows)
-                                    if illegal_flows:
-                                        self.vulnerabilities.add_illegal_flow(declaration.id.name, illegal_flows, declaration.loc.start.line)
-                                        
-                                        print(f"Illegal flow detected for variable: {declaration.id.name} in pattern {pname}")
-                                        # Handle illegal flows as needed
         print(f"=== End of Variable declaration ===")
 
     # Not tested in this implementation
@@ -133,7 +123,7 @@ class TraversalVisitor(NodeVisitor):
         Returns:
         MultiLabel or None: The label resulting from the assignment, or None if not applicable.
         """
-        new_label = None
+        new_label =  MultiLabel(list(self.policy._patterns.values()))
         print(f"=== Assignment: {node.left.name} ===")
         print(f"At line: {node.loc.start.line}")
 
@@ -142,45 +132,63 @@ class TraversalVisitor(NodeVisitor):
             self.initialized_variables.add(node.left.name)
             print(f"Initialized variable: {node.left.name}")
 
-            
+            # Visit the left side of the assignment
             # Label of the left side
             current_label = self.labelling.get_multilabel(node.left.name) or MultiLabel(list(self.policy._patterns.values()))
-
-            if hasattr(node.right, 'type') and node.right.type == "CallExpression":
-                right_name= node.right.callee.name
-     
-            elif hasattr(node.right, 'type') and node.right.type == "Identifier":
-                print(f"Assigned variable: {node.right.name}")
-                right_name= node.right.name
-            
-            elif hasattr(node.right, 'type') and node.right.type == "BinaryExpression":
-                right_name= node.right.operator
-
-            elif hasattr(node.right, 'type') and node.right.type == "Literal":
-                right_name= node.right.value
-        
 
         # Visit the right side of the assignment
         # Combine the labels from the right side with the left side
         # Set the label for the left side
         new_label=self.visit(node.right)
-        current_label.combine(new_label)
-        self.labelling.set_multilabel(node.left.name, current_label)
 
+        if hasattr(node.left, 'type') and node.left.type == "MemberExpression":
+            # combine the labels from the right and the object and property of the MemberExpression
+            object_label = self.labelling.get_multilabel(node.left.object) or MultiLabel(list(self.policy._patterns.values()))
+            property_label = self.labelling.get_multilabel(node.left.property) or MultiLabel(list(self.policy._patterns.values()))
 
-        # Check if the left side is a sink and if so detect illegal flows and add them to the vulnerabilities
-        for pname in self.policy.get_patterns_with_sink(node.left.name):
-            print(f"Sink detected: {node.left.name} in pattern {pname}")
-            multi_label = self.labelling.get_multilabel(node.left.name)
-            if multi_label:
-                illegal_flows = self.policy.detect_illegal_flows(node.left.name, multi_label)
-                
-                if illegal_flows:
-                    self.vulnerabilities.add_illegal_flow(node.left.name, illegal_flows, node.loc.start.line)
-                    print(f"Illegal flow detected for variable: {node.left.name} in pattern {pname}")
+            current_label = object_label.combine(new_label)
+            self.labelling.set_multilabel(node.left.object.name, current_label)
+            current_label = property_label.combine(new_label)
+            self.labelling.set_multilabel(node.left.property.name, current_label)
+
+            # Check if the left side is a sink and if so detect illegal flows and add them to the vulnerabilities
+            self.analyze_if_sink_vulnerabilities(node.left.object.name, node.loc.start.line)
+            
+            self.analyze_if_sink_vulnerabilities(node.left.property.name, node.loc.start.line)
+
+        else:
+            current_label.combine(new_label)
+            self.labelling.set_multilabel(node.left.name, current_label)
+
+            # Check if the left side is a sink and if so detect illegal flows and add them to the vulnerabilities
+            self.analyze_if_sink_vulnerabilities(node.left.name, node.loc.start.line)
 
         print(f"=== End of Assignment ===")    
         return new_label 
+
+    
+    def analyze_if_sink_vulnerabilities(self, sink_name, line, multi_label=None):
+        """
+        Analyze if the given variable or function is a sink and record any illegal flows found.
+
+        Parameters:
+        sink_name (str): The name of the variable or function to check as a sink.
+        line (int): The line number in the source code where the sink occurs.
+        multi_label (MultiLabel, optional): The label associated with the possible sink. If None, it will be retrieved from the labelling.
+
+        Returns:
+        None
+        """
+        for pname in self.policy.get_patterns_with_sink(sink_name):
+            print(f"Sink detected: {sink_name} in pattern {pname}")
+            if multi_label is None:
+                multi_label = self.labelling.get_multilabel(sink_name)
+            if multi_label:
+                illegal_flows = self.policy.detect_illegal_flows(sink_name, multi_label)
+                    
+                if illegal_flows:
+                    self.vulnerabilities.add_illegal_flow(sink_name, illegal_flows, line)
+                    print(f"Illegal flow detected for variable: {sink_name} in pattern {pname}")
 
     def visit_CallExpression(self, node):
         """
@@ -204,15 +212,6 @@ class TraversalVisitor(NodeVisitor):
                 if hasattr(arg, 'type') and arg.type == "Literal":
                    continue
 
-                elif hasattr(arg, 'type') and arg.type == "CallExpression":
-                    arg_name=arg.callee.name
-                    
-                elif hasattr(arg, 'type') and arg.type == "BinaryExpression":
-                    arg_name=arg.operator
-
-                elif hasattr(arg, 'type') and arg.type == "Identifier":
-                    arg_name=arg.name
-
                 # Visit the argument node
                 new_label=self.visit(arg)
                 
@@ -230,15 +229,7 @@ class TraversalVisitor(NodeVisitor):
             print(f"Source detected: {node.callee.name} in pattern {pname}")
             new_label.add_source(pname, node.callee.name, node.loc.start.line)
 
-        # Check if the function is a sink and if so detect illegal flows and add them to the vulnerabilities
-        for pname in self.policy.get_patterns_with_sink(node.callee.name):
-            print(f"Sink function detected: {node.callee.name} in pattern {pname}")
-            if function_label:
-                illegal_flows = self.policy.detect_illegal_flows(node.callee.name, function_label)
-                
-                if illegal_flows:
-                    self.vulnerabilities.add_illegal_flow(node.callee.name, illegal_flows, node.loc.start.line)
-                    print(f"Illegal flow detected for variable: {node.callee.name} in pattern {pname}")   
+        self.analyze_if_sink_vulnerabilities(node.callee.name, node.loc.start.line, new_label)
 
              
         print(f"=== End of Function call ===")
@@ -317,7 +308,9 @@ class TraversalVisitor(NodeVisitor):
         """
         print(f"=== Member expression: {node.object.name}.{node.property.name} ===")
         print(f"At line: {node.loc.start.line}")
-        current_label= self.labelling.get_multilabel(node.object.name) or MultiLabel(list(self.policy._patterns.values()))
+        object_label= self.visit(node.object)
+        property_label= self.visit(node.property)
+        current_label=object_label.combine(property_label)
         
         return current_label
     
