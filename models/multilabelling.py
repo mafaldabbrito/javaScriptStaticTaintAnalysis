@@ -37,6 +37,20 @@ class MultiLabelling:
             else:
                 self._mapping[name] = other_label
 
+    def __eq__(self, other):
+        """
+        Checks for deep equality comparison of all mappings by variable name and MultiLabel equality.
+        :param other: Another MultiLabelling object.
+        :return: True if equal, False otherwise.
+        """
+        if not isinstance(other, MultiLabelling):
+            return False
+        if set(self._mapping.keys()) != set(other._mapping.keys()):
+            return False
+        for k in self._mapping:
+            if self._mapping[k] != other._mapping[k]:
+                return False
+        return True
 
     # Helper method to get all mappings (for inspection)
     def get_all_mappings(self):
@@ -45,3 +59,5 @@ class MultiLabelling:
         :return: Dict[str, MultiLabel]
         """
         return dict(self._mapping)
+
+

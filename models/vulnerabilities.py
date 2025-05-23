@@ -119,3 +119,16 @@ class Vulnerabilities:
         output_path = os.path.join(output_dir, os.path.basename(filepath))
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(self._vulns, f, indent=4)
+
+    def __eq__(self, other):
+        if not isinstance(other, Vulnerabilities):
+            return False
+        # Compare _vulns deeply (order-insensitive)
+        def sorted_vulns(vulns):
+            # Sort sanitized_flows inside each vuln for comparison
+            def sort_sanitized(v):
+                v = v.copy()
+                v["sanitized_flows"] = sorted(v["sanitized_flows"])
+                return v
+            return sorted([sort_sanitized(v) for v in vulns], key=lambda x: (x["vulnerability"], x["source"], x["sink"]))
+        return sorted_vulns(self._vulns) == sorted_vulns(other._vulns)

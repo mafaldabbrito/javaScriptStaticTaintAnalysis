@@ -85,3 +85,19 @@ class Label:
 
     def __repr__(self):
         return f"Label ({self.sources})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Label):
+            return False
+        # Compare sources deeply
+        if len(self.sources) != len(other.sources):
+            return False
+        for s, o in zip(self.sources, other.sources):
+            if s['source'] != o['source'] or s['line'] != o['line']:
+                return False
+            # Compare sanitizers as lists of lists
+            if sorted(s['sanitizers']) != sorted(o['sanitizers']):
+                return False
+        return True
+
+

@@ -68,8 +68,21 @@ class MultiLabel:
                 combined_label = label1.combine(label2)
                 self._labels[pattern_name] = combined_label
         return self
+
     def __repr__(self):
         """
         String representation of the MultiLabel.
         """
         return f"MultiLabel ({self._labels})"
+    
+    def __eq__(self, other):
+        if not isinstance(other, MultiLabel):
+            return False
+        # Compare pattern names
+        if set(self._labels.keys()) != set(other._labels.keys()):
+            return False
+        # Compare each label using their __eq__
+        for k in self._labels:
+            if self._labels[k] != other._labels[k]:
+                return False
+        return True

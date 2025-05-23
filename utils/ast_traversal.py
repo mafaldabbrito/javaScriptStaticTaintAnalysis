@@ -167,8 +167,7 @@ class TraversalVisitor(NodeVisitor):
 
         print(f"=== End of Assignment ===")    
         return new_label 
-
-    
+  
     def analyze_if_sink_vulnerabilities(self, sink_name, line, multi_label=None):
         """
         Analyze if the given variable or function is a sink and record any illegal flows found.
@@ -244,7 +243,6 @@ class TraversalVisitor(NodeVisitor):
         print(f"=== End of Function call ===")
         return new_label
 
-
     def visit_BinaryExpression(self, node):
         """
         Visit a BinaryExpression node in the AST and compute the combined label for the expression.
@@ -274,8 +272,6 @@ class TraversalVisitor(NodeVisitor):
         print(f"=== End of Binary expression ===")
 
         return new_label
-    
-
     
     def visit_Identifier(self, node):
         """
@@ -351,6 +347,29 @@ class TraversalVisitor(NodeVisitor):
 
         print(f"=== End of If statement ===")
     
+    def visit_WhileStatement(self, node):
+        """
+        Visit a WhileStatement node in the AST and process its body.
+
+        Parameters:
+        node: The AST node representing the while statement. Should have 'test' and 'body' attributes.
+
+        Returns:
+        None
+        """
+        print(f"=== While statement ===")
+        print(f"At line: {node.loc.start.line}")
+        while_visitor = deepcopy(self)
+        current_visitor = deepcopy(self)
+
+        while_visitor.visit(node.body)
+        while( not current_visitor.compare(while_visitor)):
+            current_visitor = deepcopy(while_visitor)
+            while_visitor.visit(node.body)
+
+        self.join_visitors(while_visitor)
+        print(f"=== End of While statement ===")
+
     def visit_Program(self, node):
         """
         Visit a Program node in the AST and process all statements in its body.
@@ -406,4 +425,16 @@ class TraversalVisitor(NodeVisitor):
         """
         self.labelling.combine(other.labelling)
         self.vulnerabilities.combine(other.vulnerabilities)
+
+    def compare(self, other):
+        """
+        Compare the current visitor with another visitor.
+
+        Parameters:
+        other: Another TraversalVisitor instance to compare with.
+
+        Returns:
+        bool: True if the visitors are equal, False otherwise.
+        """
+        return self.labelling == other.labelling and self.vulnerabilities == other.vulnerabilities
         
