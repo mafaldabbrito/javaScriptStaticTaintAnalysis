@@ -61,5 +61,8 @@ class Policy:
                 # Add the source to the result regardless of sanitization
                 result.add_source(pname, source[0], source[1], source[2])
 
+        if result == MultiLabel(list(self._patterns.values())):
+            # If no illegal flows were found, return None
+            return None
 
         return result

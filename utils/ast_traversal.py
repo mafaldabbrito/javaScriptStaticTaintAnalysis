@@ -187,7 +187,7 @@ class TraversalVisitor(NodeVisitor):
             if multi_label:
                 illegal_flows = self.policy.detect_illegal_flows(sink_name, multi_label)
                     
-                if illegal_flows:
+                if illegal_flows and illegal_flows:
                     self.vulnerabilities.add_illegal_flow(sink_name, illegal_flows, line)
                     print(f"Illegal flow detected for variable: {sink_name} in pattern {pname}")
 

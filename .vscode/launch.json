@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/4-conds-branching/4b-conds-branching.js patterns/4-conds-branching/4b-conds-branching.patterns.json "
+            "args": "slices/5-loops/5a-loops-unfolding.js patterns/5-loops/5a-loops-unfolding.patterns.json "
         }
     ],
 }

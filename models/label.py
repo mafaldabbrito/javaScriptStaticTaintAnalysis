@@ -23,10 +23,15 @@ class Label:
             'line': line,
             'sanitizers': []
         }
+        for existing_entry in self.sources:
+            if existing_entry['source'] == source and existing_entry['line'] == line and sanitizers ==  existing_entry['sanitizers']:
+               return
         if sanitizers:
             # Accepts list of tuples or list of lists
             for sanitizer in sanitizers:
                 entry['sanitizers'].append(list(sanitizer))
+        # Check if the source already exists
+       
         self.sources.append(entry)
 
     def add_sanitizer(self, source, source_line, sanitizer_name, sanitizer_line):
@@ -74,13 +79,21 @@ class Label:
         Combines the current label with another label, returning a new independent Label object.
         """
         new_label = Label()
-        # Deep copy all sources
         for entry in self.sources + other_label.sources:
-            new_label.sources.append({
-                'source': entry['source'],
-                'line': entry['line'],
-                'sanitizers': [list(s) for s in entry['sanitizers']]
-            })
+            # Check if an identical entry already exists
+            exists = False
+            for existing in new_label.sources:
+                if (existing['source'] == entry['source'] and
+                    existing['line'] == entry['line'] and
+                    sorted(existing['sanitizers']) == sorted(entry['sanitizers'])):
+                    exists = True
+                    break
+            if not exists:
+                new_label.sources.append({
+                    'source': entry['source'],
+                    'line': entry['line'],
+                    'sanitizers': [list(s) for s in entry['sanitizers']]
+                })
         return new_label
 
     def __repr__(self):
