@@ -35,6 +35,7 @@ class Vulnerabilities:
                 sanitized = source_info[2]  # This is a list of sanitizers
                 source = (source_info[0], source_info[1])  # (source_name, line_number)
                 sink = (name, sink_position)
+                implicit = source_info[3]  # Implicit flag
                 flow_key = (source[0], source[1], sink[0], sink[1], pattern_name)
 
                 # Check if this flow already exists
@@ -47,6 +48,8 @@ class Vulnerabilities:
                     # Update unsanitized_flows: only "no" if all appearances have sanitizers
                     if not sanitized:
                         vuln_entry["unsanitized_flows"] = "yes"
+                    if implicit:
+                        vuln_entry["implicit"] = "yes"
                     
                 else:
                     # Increment the counter for this pattern_name
@@ -59,7 +62,7 @@ class Vulnerabilities:
                         "sink": list(sink),
                         "unsanitized_flows": "yes" if not sanitized else "no",
                         "sanitized_flows": [sanitized] if sanitized else [],
-                        "implicit": "no"
+                        "implicit": "yes" if implicit else "no"
                     }
                     self._vulns.append(vuln_entry)
                     self._flow_index[flow_key] = len(self._vulns) - 1

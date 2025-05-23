@@ -18,7 +18,7 @@ class MultiLabel:
             self._labels[name] = Label()
             self._patterns[name] = pattern
 
-    def add_source(self, pattern_name, source_name, line, sanitizers=None):
+    def add_source(self, pattern_name, source_name, line, sanitizers=None, implicit=False):
         """
         Add a source to the label associated with a given pattern,
         :param pattern_name: Name of the pattern.
@@ -27,7 +27,7 @@ class MultiLabel:
         :param sanitizers: Optional list of (sanitizer_name, line) tuples.
         """
         if pattern_name in self._patterns:
-            self._labels[pattern_name].add_source(source_name, line, sanitizers)
+            self._labels[pattern_name].add_source(source_name, line, sanitizers, implicit)
 
     def add_sanitizer(self, pattern_name, sanitizer_name, line):
         """
@@ -41,7 +41,7 @@ class MultiLabel:
             for source_info in label.get_sources_and_sanitizers():
                 source_name = source_info[0] 
                 if source_name is not None:
-                    label.add_sanitizer(source_name, source_info[1], sanitizer_name, line)
+                    label.add_sanitizer(source_name, source_info[1], sanitizer_name, line, implicit=source_info[3])
 
     # Selectors
     def get_label(self, pattern_name):

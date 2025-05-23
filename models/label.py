@@ -11,7 +11,7 @@ class Label:
         # List[Dict]: Each dict has 'source', 'line', and 'sanitizers' (list of lists)
         self.sources = []
 
-    def add_source(self, source, line, sanitizers=None):
+    def add_source(self, source, line, sanitizers=None, implicit=False):
         """
         Adds a new source to the label with optional sanitizers.
         :param source: Name of the source.
@@ -21,10 +21,11 @@ class Label:
         entry = {
             'source': source,
             'line': line,
-            'sanitizers': []
+            'sanitizers': [],
+            'implicit': implicit
         }
         for existing_entry in self.sources:
-            if existing_entry['source'] == source and existing_entry['line'] == line and sanitizers ==  existing_entry['sanitizers']:
+            if existing_entry['source'] == source and existing_entry['line'] == line and sanitizers == existing_entry['sanitizers'] and implicit == existing_entry['implicit']:
                return
         if sanitizers:
             # Accepts list of tuples or list of lists
@@ -34,7 +35,7 @@ class Label:
        
         self.sources.append(entry)
 
-    def add_sanitizer(self, source, source_line, sanitizer_name, sanitizer_line):
+    def add_sanitizer(self, source, source_line, sanitizer_name, sanitizer_line, implicit):
         """
         Adds a sanitizer to a specific source occurrence.
         If multiple sources match, adds to the first one without this sanitizer.
@@ -48,7 +49,8 @@ class Label:
         self.sources.append({
             'source': source,
             'line': source_line,
-            'sanitizers': [[sanitizer_name, sanitizer_line]]
+            'sanitizers': [[sanitizer_name, sanitizer_line]],
+            'implicit': implicit
         })
 
     # Selectors
@@ -58,10 +60,11 @@ class Label:
         for entry in self.sources:
             source = entry['source']
             source_line = entry['line']
+
             if entry['sanitizers']:
-                result.append((source, source_line, entry['sanitizers']))
+                result.append((source, source_line, entry['sanitizers'], entry['implicit']))
             else:
-                result.append((source, source_line, None))
+                result.append((source, source_line, None, entry['implicit']))
         return result
 
     def get_sanitizers(self, key):
@@ -72,6 +75,13 @@ class Label:
             if entry['source'] == key[0] and entry['line'] == key[1]:
                 result.extend(entry['sanitizers'])
         return result
+
+    def make_all_sources_implicit(self):
+        # Marks the source as implicit
+        for entry in self.sources:
+            entry['implicit'] = True
+            
+        return
 
     # Combinor
     def combine(self, other_label):
@@ -87,12 +97,15 @@ class Label:
                     existing['line'] == entry['line'] and
                     sorted(existing['sanitizers']) == sorted(entry['sanitizers'])):
                     exists = True
+                    if entry['implicit'] and not existing['implicit']:
+                        existing['implicit'] = entry['implicit']
                     break
             if not exists:
                 new_label.sources.append({
                     'source': entry['source'],
                     'line': entry['line'],
-                    'sanitizers': [list(s) for s in entry['sanitizers']]
+                    'sanitizers': [list(s) for s in entry['sanitizers']],
+                    'implicit': entry['implicit']
                 })
         return new_label
 

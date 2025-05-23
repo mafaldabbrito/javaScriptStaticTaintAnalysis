@@ -1,5 +1,5 @@
 class Pattern:
-    def __init__(self, name, sources, sanitizers, sinks):
+    def __init__(self, name, sources, sanitizers, sinks, implicit):
         """
         Constructor for a Pattern object.
 
@@ -12,6 +12,7 @@ class Pattern:
         self.sources = set(sources)
         self.sanitizers = set(sanitizers)
         self.sinks = set(sinks)
+        self.implicit= implicit
 
     def __repr__(self):
         return f"Patern(name={self.name}, sources={self.sources}, sinks={self.sinks})"
@@ -30,6 +31,9 @@ class Pattern:
 
     def get_sinks(self):
         return list(self.sinks)
+    
+    def get_implicit(self):
+        return self.implicit
     
     # Tests 
     def is_source(self, source: str):

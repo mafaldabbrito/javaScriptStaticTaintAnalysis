@@ -50,6 +50,7 @@ def load_pattern_and_slice(pattern_filename, slice_filename):
             sources=patt.get('sources', []),
             sanitizers=patt.get('sanitizers', []),
             sinks=patt.get('sinks', []),
+            implicit=(patt.get('implicit', '').lower() == 'yes')
         )
         patterns.append(pattern_obj)
 

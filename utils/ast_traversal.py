@@ -46,7 +46,7 @@ class NodeVisitor:
 
 
 class TraversalVisitor(NodeVisitor):
-    def __init__(self, policy):
+    def __init__(self, policy, implicit_analysis=False, implicits=None):
         """
         Initialize the TraversalVisitor with a policy, multilabelling, and vulnerabilities tracker.
 
@@ -57,7 +57,20 @@ class TraversalVisitor(NodeVisitor):
         self.policy = policy
         self.labelling = MultiLabelling()
         self.vulnerabilities = Vulnerabilities()
+        self.implicit_analysis = implicit_analysis
+        self.implicits = MultiLabel(list(self.policy._patterns.values()))
 
+    def set_implicit_analysis(self, implicit_analysis):
+        """
+        Set the implicit analysis flag.
+
+        Parameters:
+        implicit_analysis (bool): Flag indicating whether to perform implicit analysis.
+
+        Returns:
+        None
+        """
+        self.implicit_analysis = implicit_analysis
     # Not tested in this implementation
     # TODO: test this function
     def visit_VariableDeclaration(self, node):
@@ -81,13 +94,15 @@ class TraversalVisitor(NodeVisitor):
                         if hasattr(declaration.init, 'type') and not declaration.init.type == "Identifier":
                             self.visit(declaration.init)
                         else:
+                           
                             for pname in self.policy.get_patterns_with_source(declaration.init.name):
-
+                                implicit = self.check_implicit_analysis(pname)
+                                        
                                 print(f"Source detected: {declaration.init.name} in pattern {pname}")
                                 label = self.labelling.get_multilabel(declaration.id.name) or MultiLabel(list(self.policy._patterns.values()))
-                                label.add_source(pname, declaration.init.name, declaration.loc.start.line)
+                                label.add_source(pname, declaration.init.name, declaration.loc.start.line, None,implicit)
                                 self.labelling.set_multilabel(declaration.id.name, label)
-                            
+                                
                             print(f"Assigned variable: {declaration.init.name}")
 
                             self.analyze_if_sink_vulnerabilities(declaration.id.name, declaration.loc.start.line)
@@ -167,29 +182,6 @@ class TraversalVisitor(NodeVisitor):
 
         print(f"=== End of Assignment ===")    
         return new_label 
-  
-    def analyze_if_sink_vulnerabilities(self, sink_name, line, multi_label=None):
-        """
-        Analyze if the given variable or function is a sink and record any illegal flows found.
-
-        Parameters:
-        sink_name (str): The name of the variable or function to check as a sink.
-        line (int): The line number in the source code where the sink occurs.
-        multi_label (MultiLabel, optional): The label associated with the possible sink. If None, it will be retrieved from the labelling.
-
-        Returns:
-        None
-        """
-        for pname in self.policy.get_patterns_with_sink(sink_name):
-            print(f"Sink detected: {sink_name} in pattern {pname}")
-            if multi_label is None:
-                multi_label = self.labelling.get_multilabel(sink_name)
-            if multi_label:
-                illegal_flows = self.policy.detect_illegal_flows(sink_name, multi_label)
-                    
-                if illegal_flows and illegal_flows:
-                    self.vulnerabilities.add_illegal_flow(sink_name, illegal_flows, line)
-                    print(f"Illegal flow detected for variable: {sink_name} in pattern {pname}")
 
     def visit_CallExpression(self, node):
         """
@@ -225,6 +217,9 @@ class TraversalVisitor(NodeVisitor):
                     function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
                     new_label=function_label
 
+        for pname in self.policy.get_patterns_with_sanitizer(node.callee.name):          
+            self.implicits.add_sanitizer(pname,node.callee.name, node.loc.start.line)
+
         if hasattr(node.callee, 'type') and node.callee.type == "MemberExpression":
             new_label=self.visit(node.callee.object)
             function_callee_name=node.callee.property.name
@@ -235,7 +230,8 @@ class TraversalVisitor(NodeVisitor):
         # Check if the function is a source and add it to the label
         for pname in self.policy.get_patterns_with_source(function_callee_name):
             print(f"Source detected: {function_callee_name} in pattern {pname}")
-            new_label.add_source(pname, function_callee_name, node.loc.start.line)
+            implicit = self.check_implicit_analysis(pname)
+            new_label.add_source(pname, function_callee_name, node.loc.start.line,None,implicit)
 
         self.analyze_if_sink_vulnerabilities(function_callee_name, node.loc.start.line, new_label)
 
@@ -292,12 +288,14 @@ class TraversalVisitor(NodeVisitor):
         if node.name not in self.initialized_variables:
             for pname in self.policy.get_patterns_without_source(node.name):
                 print(f"Source added: {node.name} in pattern {pname}")
-                current_label.add_source(pname, node.name, node.loc.start.line)
+                implicit = self.check_implicit_analysis(pname)
+                current_label.add_source(pname, node.name, node.loc.start.line, None,implicit)
         
         # Check if the identifier is a source
         for pname in self.policy.get_patterns_with_source(node.name):
             print(f"Source detected: {node.name} in pattern {pname}")
-            current_label.add_source(pname, node.name, node.loc.start.line)
+            implicit = self.check_implicit_analysis(pname)
+            current_label.add_source(pname, node.name, node.loc.start.line, None,implicit)
 
         return  current_label
 
@@ -332,19 +330,36 @@ class TraversalVisitor(NodeVisitor):
           
         print(f"=== If statement ===")
         print(f"At line: {node.loc.start.line}")
-        # self.visit(node.test)
-        consequent_visitor = deepcopy(self)
+        # Visit the test condition of the if statement
+        # But first set the implicit analysis
+        self.set_implicit_analysis(True)
+        test_label=self.visit(node.test)
+       
+        if test_label is None:
+            self.set_implicit_analysis(False)
+        else:
+            # Make sure all the sources in test_label are implicit = True 
+            for pname in test_label.get_all_labels():
+                label = test_label.get_label(pname)
+                if label:
+                       label.make_all_sources_implicit()
+
+
+        consequent_visitor = self.copy(test_label)
         consequent_visitor.visit(node.consequent)
         
 
         if hasattr(node, 'alternate'):
-            alternate_visitor = deepcopy(self)
+            alternate_visitor = self.copy(test_label)
             alternate_visitor.visit(node.alternate)
             # Join the visitors to combine their findings
-            self.join_visitors(alternate_visitor)
-            
+            if alternate_visitor.initialized_variables == consequent_visitor.initialized_variables:
+                self.join_visitors(alternate_visitor, FULL=True)
+            else:
+                self.join_visitors(alternate_visitor)
+        
         self.join_visitors(consequent_visitor)
-
+        self.set_implicit_analysis(False)
         print(f"=== End of If statement ===")
     
     def visit_WhileStatement(self, node):
@@ -359,12 +374,24 @@ class TraversalVisitor(NodeVisitor):
         """
         print(f"=== While statement ===")
         print(f"At line: {node.loc.start.line}")
-        while_visitor = deepcopy(self)
-        current_visitor = deepcopy(self)
+        self.set_implicit_analysis(True)
+        test_label=self.visit(node.test)
+       
+        if test_label is None:
+            self.set_implicit_analysis(False)
+        else:
+            # Make sure all the sources in test_label are implicit = True 
+            for pname in test_label.get_all_labels():
+                label = test_label.get_label(pname)
+                if label:
+                       label.make_all_sources_implicit()
+
+        while_visitor = self.copy(test_label)
+        current_visitor = self.copy(test_label)
 
         while_visitor.visit(node.body)
         while( not current_visitor.compare(while_visitor)):
-            current_visitor = deepcopy(while_visitor)
+            current_visitor = while_visitor.copy()
             while_visitor.visit(node.body)
 
         self.join_visitors(while_visitor)
@@ -382,6 +409,41 @@ class TraversalVisitor(NodeVisitor):
         """
         for stmt in node.body:
             self.visit(stmt)
+
+
+    def check_implicit_analysis(self, pname, PROPAGATION=False):
+        if (self.implicit_analysis and pname in self.policy.get_patterns_with_implicit()) or (PROPAGATION and pname in self.policy.get_patterns_with_implicit()):
+            implicit = True
+        else:
+            implicit = False
+        
+        return implicit
+    
+
+    def analyze_if_sink_vulnerabilities(self, sink_name, line, multi_label=None):
+        """
+        Analyze if the given variable or function is a sink and record any illegal flows found.
+
+        Parameters:
+        sink_name (str): The name of the variable or function to check as a sink.
+        line (int): The line number in the source code where the sink occurs.
+        multi_label (MultiLabel, optional): The label associated with the possible sink. If None, it will be retrieved from the labelling.
+
+        Returns:
+        None
+        """
+        for pname in self.policy.get_patterns_with_sink(sink_name):
+            print(f"Sink detected: {sink_name} in pattern {pname}")
+            if multi_label is None:
+                multi_label = self.labelling.get_multilabel(sink_name)
+            if multi_label:
+                if self.implicits and self.check_implicit_analysis(pname, PROPAGATION=True):
+                    multi_label = self.implicits.combine(multi_label)
+                illegal_flows = self.policy.detect_illegal_flows(sink_name, multi_label)
+                    
+                if illegal_flows and illegal_flows:
+                    self.vulnerabilities.add_illegal_flow(sink_name, illegal_flows, line)
+                    print(f"Illegal flow detected for variable: {sink_name} in pattern {pname}")
 
     def get_vulnerabilities(self):
         """
@@ -413,9 +475,9 @@ class TraversalVisitor(NodeVisitor):
         """
         return self.initialized_variables
     
-    def join_visitors(self, other):
+    def join_visitors(self, other, FULL=False):
         """
-        Join the current visitor with another visitor.
+        Join the current visitor with another visitor. Used to combine findings from different branches of the AST.
 
         Parameters:
         other: Another TraversalVisitor instance to join with.
@@ -425,6 +487,9 @@ class TraversalVisitor(NodeVisitor):
         """
         self.labelling.combine(other.labelling)
         self.vulnerabilities.combine(other.vulnerabilities)
+        self.implicits.combine(other.implicits)
+        if FULL:
+            self.initialized_variables.update(other.initialized_variables)
 
     def compare(self, other):
         """
@@ -437,4 +502,18 @@ class TraversalVisitor(NodeVisitor):
         bool: True if the visitors are equal, False otherwise.
         """
         return self.labelling == other.labelling and self.vulnerabilities == other.vulnerabilities
+    
+    def copy(self, new_implicits=None):
+        """
+        Create a deep copy of the current visitor, but with a different self.implicits.
+
+        Parameters:
+        new_implicits (MultiLabel): The new implicits to use in the copied visitor.
+
+        Returns:
+        TraversalVisitor: A new instance of TraversalVisitor with the same state except for self.implicits.
+        """
+        visitor_copy = deepcopy(self)
+        visitor_copy.implicits = new_implicits
+        return visitor_copy
         
