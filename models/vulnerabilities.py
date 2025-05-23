@@ -84,8 +84,10 @@ class Vulnerabilities:
                     existing_vuln["unsanitized_flows"] = "no" 
                 else:
                     existing_vuln["unsanitized_flows"] = "yes"
-                
-                existing_vuln["sanitized_flows"].extend(other_vuln["sanitized_flows"])
+                for sanitized in other_vuln["sanitized_flows"]:
+                    if sanitized not in existing_vuln["sanitized_flows"]:
+                        existing_vuln["sanitized_flows"].append(sanitized)
+                # existing_vuln["sanitized_flows"].extend(other_vuln["sanitized_flows"])
             else:
                 # Add new vulnerability
                 # Increment the pattern counter for the new vulnerability

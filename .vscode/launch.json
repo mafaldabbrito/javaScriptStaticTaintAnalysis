@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/7-conds-implicit/7-conds-implicit.js patterns/7-conds-implicit/7-conds-implicit.patterns.json "
+            "args": "slices/9-regions-guards/9-regions-guards.js patterns/9-regions-guards/9-regions-guards.patterns.json "
         }
     ],
 }
