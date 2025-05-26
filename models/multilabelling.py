@@ -59,5 +59,14 @@ class MultiLabelling:
         :return: Dict[str, MultiLabel]
         """
         return dict(self._mapping)
+    
+    def __repr__(self):
+        """
+        Returns a string representation of the MultiLabelling object for debugging.
+        :return: String representation.
+        """
+        items = [f"{k}: {v}" for k, v in self._mapping.items()]
+        return "MultiLabelling({\n" + ",\n".join(items) + "\n})"
+
 
 

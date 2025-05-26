@@ -354,7 +354,7 @@ class TraversalVisitor(NodeVisitor):
             alternate_visitor.visit(node.alternate)
             # Join the visitors to combine their findings
             if alternate_visitor.initialized_variables == consequent_visitor.initialized_variables:
-                self.join_visitors(alternate_visitor, FULL=True)
+                self.join_visitors(alternate_visitor, INITIALIZED=True)
             else:
                 self.join_visitors(alternate_visitor)
         
@@ -390,11 +390,15 @@ class TraversalVisitor(NodeVisitor):
         current_visitor = self.copy(test_label)
 
         while_visitor.visit(node.body)
+        self.join_visitors(while_visitor, IMPLICITS=True)
+       
         while( not current_visitor.compare(while_visitor)):
             current_visitor = while_visitor.copy()
             while_visitor.visit(node.body)
+            self.join_visitors(while_visitor)
 
-        self.join_visitors(while_visitor)
+
+        self.set_implicit_analysis(False)
         print(f"=== End of While statement ===")
 
     def visit_Program(self, node):
@@ -475,7 +479,7 @@ class TraversalVisitor(NodeVisitor):
         """
         return self.initialized_variables
     
-    def join_visitors(self, other, FULL=False):
+    def join_visitors(self, other, INITIALIZED=False, IMPLICITS=False):
         """
         Join the current visitor with another visitor. Used to combine findings from different branches of the AST.
 
@@ -487,8 +491,9 @@ class TraversalVisitor(NodeVisitor):
         """
         self.labelling.combine(other.labelling)
         self.vulnerabilities.combine(other.vulnerabilities)
-        self.implicits.combine(other.implicits)
-        if FULL:
+        if IMPLICITS:
+            self.implicits.combine(other.implicits)
+        if INITIALIZED:
             self.initialized_variables.update(other.initialized_variables)
 
     def compare(self, other):

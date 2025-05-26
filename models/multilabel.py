@@ -86,3 +86,10 @@ class MultiLabel:
             if self._labels[k] != other._labels[k]:
                 return False
         return True
+    
+    def __repr__(self):
+        """
+        String representation of the MultiLabel.
+        """
+        items = [f"{k}: {v}" for k, v in self._labels.items()]
+        return f"MultiLabel ({', '.join(items)})"

@@ -110,7 +110,16 @@ class Label:
         return new_label
 
     def __repr__(self):
-        return f"Label ({self.sources})"
+        lines = []
+        for entry in self.sources:
+            src = f"{entry['source']},{entry['line']}"
+            sanitizers = (
+                ", ".join(f"{s[0]},{s[1]}" for s in entry['sanitizers'])
+                if entry['sanitizers'] else "None"
+            )
+            implicit = "implicit" if entry.get('implicit') else "explicit"
+            lines.append(f"[{src} | sanitizers: {sanitizers} | {implicit}]")
+        return "Label: " + "; ".join(lines)
 
     def __eq__(self, other):
         if not isinstance(other, Label):
