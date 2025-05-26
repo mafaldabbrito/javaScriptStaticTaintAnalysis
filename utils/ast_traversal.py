@@ -175,6 +175,8 @@ class TraversalVisitor(NodeVisitor):
 
         else:
             new_label=current_label.combine(new_label)
+            if self.implicits:
+                new_label = current_label.combine(self.implicits)
             self.labelling.set_multilabel(node.left.name, current_label)
 
             # Check if the left side is a sink and if so detect illegal flows and add them to the vulnerabilities
@@ -217,8 +219,9 @@ class TraversalVisitor(NodeVisitor):
                     function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
                     new_label=function_label
 
-        for pname in self.policy.get_patterns_with_sanitizer(node.callee.name):          
+        for pname in self.policy.get_patterns_with_sanitizer(node.callee.name) :          
             self.implicits.add_sanitizer(pname,node.callee.name, node.loc.start.line)
+        
 
         if hasattr(node.callee, 'type') and node.callee.type == "MemberExpression":
             new_label=self.visit(node.callee.object)
@@ -519,6 +522,8 @@ class TraversalVisitor(NodeVisitor):
         TraversalVisitor: A new instance of TraversalVisitor with the same state except for self.implicits.
         """
         visitor_copy = deepcopy(self)
+        if visitor_copy.implicits and new_implicits:
+            visitor_copy.implicits.combine(new_implicits)
         visitor_copy.implicits = new_implicits
         return visitor_copy
         

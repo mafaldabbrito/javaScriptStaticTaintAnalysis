@@ -95,10 +95,8 @@ class Label:
             for existing in new_label.sources:
                 if (existing['source'] == entry['source'] and
                     existing['line'] == entry['line'] and
-                    sorted(existing['sanitizers']) == sorted(entry['sanitizers'])):
+                    sorted(existing['sanitizers']) == sorted(entry['sanitizers']) and existing['implicit'] == entry['implicit'] ):
                     exists = True
-                    if entry['implicit'] and not existing['implicit']:
-                        existing['implicit'] = entry['implicit']
                     break
             if not exists:
                 new_label.sources.append({

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/9-regions-guards/9-regions-guards.js patterns/9-regions-guards/9-regions-guards.patterns.json "
+            "args": "slices/5-loops/5c-loops-unfolding.js patterns/5-loops/5c-loops-unfolding.patterns.json "
         }
     ],
 }

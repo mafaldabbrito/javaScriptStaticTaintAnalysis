@@ -33,6 +33,11 @@ class Policy:
         """Returns a list of pattern names for which the given name is an implicit sink."""
         return [name for name, p in self._patterns.items() if p.get_implicit()]
     
+    def is_pattern_implicit(self, pattern_name):
+        """Returns True if the given pattern name is an implicit sink, False otherwise."""
+        pattern = self._patterns.get(pattern_name)
+        return pattern.get_implicit() if pattern else False
+    
     # Core flow-checking operation
     def detect_illegal_flows(self, name, multilabel):
         """
@@ -47,14 +52,17 @@ class Policy:
         :param multilabel: A MultiLabel instance describing the current flows
         :return: A new MultiLabel with only the patterns where illegal flows occur
         """
+        # Identify patterns where 'name' is a sink or an implicit sink,
+        # and collect (pattern name, is_implicit) tuples
         illegal_patterns = [
-            pname for pname, pattern in self._patterns.items()
+            (pname, pattern.get_implicit())
+            for pname, pattern in self._patterns.items()
             if pattern.is_sink(name)
         ]
 
         result = MultiLabel(list(self._patterns.values()))
 
-        for pname in illegal_patterns:
+        for pname,implicit in illegal_patterns:
             label = multilabel.get_label(pname)
             if not label:
                 continue
@@ -62,7 +70,9 @@ class Policy:
             
             for source in label.get_sources_and_sanitizers():
 
-                # Add the source to the result regardless of sanitization
+                if source[3] and not implicit:
+                    continue
+
                 result.add_source(pname, source[0], source[1], source[2], source[3])
 
         if result == MultiLabel(list(self._patterns.values())):
