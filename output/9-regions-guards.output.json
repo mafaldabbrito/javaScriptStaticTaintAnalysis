@@ -32,7 +32,7 @@
                 ]
             ]
         ],
-        "implicit": "no"
+        "implicit": "yes"
     },
     {
         "vulnerability": "A_1",

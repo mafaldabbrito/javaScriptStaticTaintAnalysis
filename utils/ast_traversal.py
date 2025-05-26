@@ -219,8 +219,7 @@ class TraversalVisitor(NodeVisitor):
                     function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
                     new_label=function_label
 
-        # for pname in self.policy.get_patterns_with_sanitizer(node.callee.name) :          
-        #     self.implicits.add_sanitizer(pname,node.callee.name, node.loc.start.line)
+
         
 
         if hasattr(node.callee, 'type') and node.callee.type == "MemberExpression":
@@ -335,25 +334,25 @@ class TraversalVisitor(NodeVisitor):
         print(f"At line: {node.loc.start.line}")
         # Visit the test condition of the if statement
         # But first set the implicit analysis
-        self.set_implicit_analysis(True)
         test_label=self.visit(node.test)
-       
-        if test_label is None:
-            self.set_implicit_analysis(False)
-        else:
-            # Make sure all the sources in test_label are implicit = True 
+        consequent_visitor = self.copy(test_label)
+
+        if test_label:
+            consequent_visitor.set_implicit_analysis(True)
             for pname in test_label.get_all_labels():
                 label = test_label.get_label(pname)
                 if label:
                        label.make_all_sources_implicit()
 
 
-        consequent_visitor = self.copy(test_label)
+        
         consequent_visitor.visit(node.consequent)
         
 
         if hasattr(node, 'alternate'):
             alternate_visitor = self.copy(test_label)
+            if test_label:
+                 alternate_visitor.set_implicit_analysis(True)
             alternate_visitor.visit(node.alternate)
             # Join the visitors to combine their findings
             if alternate_visitor.initialized_variables == consequent_visitor.initialized_variables:
@@ -362,7 +361,6 @@ class TraversalVisitor(NodeVisitor):
                 self.join_visitors(alternate_visitor)
         
         self.join_visitors(consequent_visitor)
-        self.set_implicit_analysis(False)
         print(f"=== End of If statement ===")
     
     def visit_WhileStatement(self, node):
@@ -377,21 +375,22 @@ class TraversalVisitor(NodeVisitor):
         """
         print(f"=== While statement ===")
         print(f"At line: {node.loc.start.line}")
-        self.set_implicit_analysis(True)
         test_label=self.visit(node.test)
         test_label = deepcopy(test_label)
        
-        if test_label is None:
-            self.set_implicit_analysis(False)
-        else:
+        while_visitor = self.copy(test_label)
+        current_visitor = self.copy(test_label)
+
+        if test_label:
+            while_visitor.set_implicit_analysis(True)
+            current_visitor.set_implicit_analysis(True)
             # Make sure all the sources in test_label are implicit = True 
             for pname in test_label.get_all_labels():
                 label = test_label.get_label(pname)
                 if label:
                        label.make_all_sources_implicit()
 
-        while_visitor = self.copy(test_label)
-        current_visitor = self.copy(test_label)
+       
 
         while_visitor.visit(node.body)
         self.join_visitors(while_visitor, IMPLICITS=True)
@@ -402,7 +401,6 @@ class TraversalVisitor(NodeVisitor):
             self.join_visitors(while_visitor)
 
 
-        self.set_implicit_analysis(False)
         print(f"=== End of While statement ===")
 
     def visit_Program(self, node):
