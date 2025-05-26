@@ -28,21 +28,11 @@
             [
                 [
                     "s",
-                    5
-                ],
-                [
-                    "s",
-                    13
-                ]
-            ],
-            [
-                [
-                    "s",
                     13
                 ]
             ]
         ],
-        "implicit": "yes"
+        "implicit": "no"
     },
     {
         "vulnerability": "A_1",
@@ -76,30 +66,7 @@
             15
         ],
         "unsanitized_flows": "yes",
-        "sanitized_flows": [
-            [
-                [
-                    "s",
-                    5
-                ],
-                [
-                    "s",
-                    13
-                ]
-            ],
-            [
-                [
-                    "s",
-                    13
-                ]
-            ],
-            [
-                [
-                    "s",
-                    5
-                ]
-            ]
-        ],
+        "sanitized_flows": [],
         "implicit": "yes"
     }
 ]

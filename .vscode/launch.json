@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "js_analyzer.py",
             "console": "integratedTerminal",
-            "args": "slices/5-loops/5c-loops-unfolding.js patterns/5-loops/5c-loops-unfolding.patterns.json "
+            "args": "slices/8-loops-implicit/8-loops-implicit.js patterns/8-loops-implicit/8-loops-implicit.patterns.json "
         }
     ],
 }

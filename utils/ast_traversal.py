@@ -58,7 +58,7 @@ class TraversalVisitor(NodeVisitor):
         self.labelling = MultiLabelling()
         self.vulnerabilities = Vulnerabilities()
         self.implicit_analysis = implicit_analysis
-        self.implicits = MultiLabel(list(self.policy._patterns.values()))
+        self.implicits = None
 
     def set_implicit_analysis(self, implicit_analysis):
         """
@@ -175,7 +175,7 @@ class TraversalVisitor(NodeVisitor):
 
         else:
             new_label=current_label.combine(new_label)
-            if self.implicits:
+            if self.implicits and self.implicit_analysis:
                 new_label = current_label.combine(self.implicits)
             self.labelling.set_multilabel(node.left.name, current_label)
 
@@ -219,8 +219,8 @@ class TraversalVisitor(NodeVisitor):
                     function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
                     new_label=function_label
 
-        for pname in self.policy.get_patterns_with_sanitizer(node.callee.name) :          
-            self.implicits.add_sanitizer(pname,node.callee.name, node.loc.start.line)
+        # for pname in self.policy.get_patterns_with_sanitizer(node.callee.name) :          
+        #     self.implicits.add_sanitizer(pname,node.callee.name, node.loc.start.line)
         
 
         if hasattr(node.callee, 'type') and node.callee.type == "MemberExpression":
@@ -379,6 +379,7 @@ class TraversalVisitor(NodeVisitor):
         print(f"At line: {node.loc.start.line}")
         self.set_implicit_analysis(True)
         test_label=self.visit(node.test)
+        test_label = deepcopy(test_label)
        
         if test_label is None:
             self.set_implicit_analysis(False)
@@ -418,8 +419,8 @@ class TraversalVisitor(NodeVisitor):
             self.visit(stmt)
 
 
-    def check_implicit_analysis(self, pname, PROPAGATION=False):
-        if (self.implicit_analysis and pname in self.policy.get_patterns_with_implicit()) or (PROPAGATION and pname in self.policy.get_patterns_with_implicit()):
+    def check_implicit_analysis(self, pname):
+        if (self.implicit_analysis and pname in self.policy.get_patterns_with_implicit()):
             implicit = True
         else:
             implicit = False
@@ -444,7 +445,7 @@ class TraversalVisitor(NodeVisitor):
             if multi_label is None:
                 multi_label = self.labelling.get_multilabel(sink_name)
             if multi_label:
-                if self.implicits and self.check_implicit_analysis(pname, PROPAGATION=True):
+                if self.implicits and self.check_implicit_analysis(pname):
                     multi_label = self.implicits.combine(multi_label)
                 illegal_flows = self.policy.detect_illegal_flows(sink_name, multi_label)
                     
@@ -495,6 +496,8 @@ class TraversalVisitor(NodeVisitor):
         self.labelling.combine(other.labelling)
         self.vulnerabilities.combine(other.vulnerabilities)
         if IMPLICITS:
+            if self.implicits is None:
+                self.implicits = MultiLabel(list(self.policy._patterns.values()))
             self.implicits.combine(other.implicits)
         if INITIALIZED:
             self.initialized_variables.update(other.initialized_variables)

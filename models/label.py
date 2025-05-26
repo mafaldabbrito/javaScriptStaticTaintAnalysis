@@ -38,20 +38,22 @@ class Label:
     def add_sanitizer(self, source, source_line, sanitizer_name, sanitizer_line, implicit):
         """
         Adds a sanitizer to a specific source occurrence.
-        If multiple sources match, adds to the first one without this sanitizer.
         """
+        exists = False
         for entry in self.sources:
             if entry['source'] == source and entry['line'] == source_line:
                 if [sanitizer_name, sanitizer_line] not in entry['sanitizers']:
                     entry['sanitizers'].append([sanitizer_name, sanitizer_line])
                     return
-        # If not found, create a new source occurrence with this sanitizer
-        self.sources.append({
-            'source': source,
-            'line': source_line,
-            'sanitizers': [[sanitizer_name, sanitizer_line]],
-            'implicit': implicit
-        })
+                exists= True
+        if not exists:
+            # If not found, create a new source occurrence with this sanitizer
+            self.sources.append({
+                'source': source,
+                'line': source_line,
+                'sanitizers': [[sanitizer_name, sanitizer_line]],
+                'implicit': implicit
+            })
 
     # Selectors
     def get_sources_and_sanitizers(self):
