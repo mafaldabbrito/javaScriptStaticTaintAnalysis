@@ -157,6 +157,13 @@ class TraversalVisitor(NodeVisitor):
         # Set the label for the left side
         new_label=self.visit(node.right)
 
+        if node.right.type == "CallExpression" and self.implicits and self.implicit_analysis:
+            implicits = deepcopy(self.implicits)
+            for pname in self.policy.get_patterns_with_sanitizer(node.right.callee.name):
+                print(f"Sanitizer detected: {node.right.callee.name} in pattern {pname}")
+                implicits.add_sanitizer(pname,node.right.callee.name, node.loc.start.line)
+            new_label = new_label.combine(implicits)
+
         if hasattr(node.left, 'type') and node.left.type == "MemberExpression":
             self.initialized_variables.add(node.left.property.name)
             # combine the labels from the right and the object and property of the MemberExpression
@@ -213,12 +220,13 @@ class TraversalVisitor(NodeVisitor):
                 # Combine the labels from the argument with the function label
                 new_label=function_label.combine(new_label)
 
-                # Check if the function is a sanitizer and add it to the label
-                for pname in self.policy.get_patterns_with_sanitizer(node.callee.name):
-                    print(f"Sanitizer detected: {node.callee.name} in pattern {pname}")
-                    function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
-                    new_label=function_label
+                
 
+
+        for pname in self.policy.get_patterns_with_sanitizer(node.callee.name):
+                print(f"Sanitizer detected: {node.callee.name} in pattern {pname}")
+                function_label.add_sanitizer(pname,node.callee.name, node.loc.start.line)
+                new_label=function_label
 
         
 
